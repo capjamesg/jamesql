@@ -31,7 +31,6 @@ To create a database, use the following code:
 
 ```python
 from nosql import NoSQL
-import json
 
 index = NoSQL()
 ```
