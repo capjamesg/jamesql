@@ -31,4 +31,4 @@ jobs:
       - name: 🧪 Test
         env:
           SITE_ENV: production
-        run: "python -m pytest ./test/test.py"
+        run: "python -m pytest ./tests/test.py"
