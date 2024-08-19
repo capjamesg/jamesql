@@ -1,3 +1,5 @@
+[![test workflow](https://github.com/capjamesg/nosql/actions/workflows/test.yml/badge.svg)](https://github.com/capjamesg/nosql/actions/workflows/test.yml)
+
 # NoSQL
 
 A NoSQL database implemented in Python.
