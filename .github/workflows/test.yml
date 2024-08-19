@@ -1,4 +1,4 @@
-name: NoSQL Test Workflow
+name: JameSQL Test Workflow
 
 on:
   pull_request:

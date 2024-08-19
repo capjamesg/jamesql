@@ -1,8 +1,8 @@
-[![test workflow](https://github.com/capjamesg/nosql/actions/workflows/test.yml/badge.svg)](https://github.com/capjamesg/nosql/actions/workflows/test.yml)
+[![test workflow](https://github.com/capjamesg/jamesql/actions/workflows/test.yml/badge.svg)](https://github.com/capjamesg/jamesql/actions/workflows/test.yml)
 
 # JameSQL
 
-A NoSQL database implemented in Python.
+A JameSQL database implemented in Python.
 
 This project has support for:
 
@@ -18,8 +18,8 @@ This database does not enforce a schema, so you can insert records with differen
 To install this project, run:
 
 ```
-git clone https://github.com/capjamesg/nosql
-cd nosql
+git clone https://github.com/capjamesg/jamesql
+cd jamesql
 pip3 install -e .
 ```
 
@@ -32,7 +32,7 @@ To create a database, use the following code:
 ```python
 from nosql import NoSQL
 
-index = NoSQL()
+index = JameSQL()
 ```
 
 ### Add documents to a database

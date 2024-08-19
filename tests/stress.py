@@ -4,7 +4,7 @@
 # - whether the index can handle a larger number of documents
 # - whether the index can handle larger documents
 
-from nosql import NoSQL
+from jamesql import JameSQL
 import json
 import time
 from tqdm import tqdm
@@ -12,7 +12,7 @@ from tqdm import tqdm
 with open("tests/fixtures/documents.json") as f:
     documents = json.load(f)
 
-index = NoSQL(
+index = JameSQL(
     index_by=["title", "lyric"],
 )
 

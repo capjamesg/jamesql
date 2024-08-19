@@ -1,4 +1,4 @@
-name: NoSQL Benchmark Workflow
+name: JameSQL Benchmark Workflow
 
 on:
   pull_request:

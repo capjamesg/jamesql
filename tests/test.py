@@ -4,7 +4,7 @@ from contextlib import ExitStack as DoesNotRaise
 import pytest
 from pytest import raises
 
-from nosql import NoSQL
+from jamesql import JameSQL
 
 
 @pytest.fixture
@@ -12,9 +12,7 @@ def create_index():
     with open("tests/fixtures/documents.json") as f:
         documents = json.load(f)
 
-    index = NoSQL(
-        index_by=["title"],
-    )
+    index = JameSQL()
 
     for document in documents:
         index.add(document)
@@ -97,7 +95,7 @@ def create_index():
         ),  # the query is case-sensitive
         (
             {
-                "query": {"lyrics": {"starts_with": "started with"}},
+                "query": {"lyric": {"starts_with": "started with"}},
                 "limit": 10,
                 "sort_by": "title",
             },

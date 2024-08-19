@@ -2,7 +2,7 @@ import setuptools
 from setuptools import find_packages
 import re
 
-with open("./nosql/__init__.py", 'r') as f:
+with open("./jamesql/__init__.py", 'r') as f:
     content = f.read()
     version = re.search(r'__version__\s*=\s*[\'"]([^\'"]*)[\'"]', content).group(1)
     
@@ -10,14 +10,14 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="nosql",
+    name="jamesql",
     version=version,
     author="capjamesg",
     author_email="jamesg@jamesg.blog",
-    description="A NoSQL database implemented in Python.",
+    description="A JameSQL database implemented in Python.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/capjamesg/nosql",
+    url="https://github.com/capjamesg/jamesql",
     install_requires=[
         "pybmoore",
     ],
