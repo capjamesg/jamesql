@@ -12,9 +12,7 @@ from tqdm import tqdm
 with open("tests/fixtures/documents.json") as f:
     documents = json.load(f)
 
-index = JameSQL(
-    index_by=["title", "lyric"],
-)
+index = JameSQL()
 
 for document in tqdm(documents * 100000):
     document = document.copy()
