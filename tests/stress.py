@@ -41,7 +41,7 @@ index.create_gsi("lyric")
 
 times = []
 
-for i in tqdm(range(100000)):
+for i in tqdm(range(100)):
     result = index.search(query)
     times.append(float(result["query_time"]))
 
