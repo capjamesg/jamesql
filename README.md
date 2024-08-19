@@ -18,9 +18,7 @@ This database does not enforce a schema, so you can insert records with differen
 To install this project, run:
 
 ```
-git clone https://github.com/capjamesg/jamesql
-cd jamesql
-pip3 install -e .
+pip install jamesql
 ```
 
 ## Usage
