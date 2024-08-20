@@ -20,7 +20,8 @@ setuptools.setup(
     url="https://github.com/capjamesg/jamesql",
     install_requires=[
         "pybmoore",
-        "pygtrie"
+        "pygtrie",
+        "lark"
     ],
     packages=find_packages(exclude=("tests",)),
     extras_require={
