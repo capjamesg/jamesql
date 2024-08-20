@@ -25,6 +25,10 @@ METHODS = {"and": set.intersection, "or": set.union}
 
 RESERVED_QUERY_TERMS = ["strict"]
 
+# this is the maximum number of individual sub-queries
+# that can be run in a single query
+MAXIMUM_QUERY_STATEMENTS = 20
+
 
 class GSI_INDEX_STRATEGIES(Enum):
     PREFIX = "prefix"
@@ -226,6 +230,15 @@ class JameSQL:
         elif query["query"] == "*":  # all query
             results = list(self.global_index.values())
         else:
+            number_of_query_conditions = self._get_query_conditions(query["query"])
+
+            if len(number_of_query_conditions) > MAXIMUM_QUERY_STATEMENTS:
+                return {
+                    "documents": [],
+                    "error": "Too many query conditions. Maximum is " + str(MAXIMUM_QUERY_STATEMENTS) + ".",
+                    "query_time": str(round(time.time() - start_time, 4)),
+                }
+            
             results = self._recursively_parse_query(query["query"])
 
             if len(results) > 0 and isinstance(results[0], dict):
@@ -276,7 +289,6 @@ class JameSQL:
         }
 
     def _get_query_conditions(self, query_tree):
-        # This is not used
         first_key = list(query_tree.keys())[0]
 
         if first_key in KEYW0RDS:
@@ -284,10 +296,10 @@ class JameSQL:
 
             if isinstance(query_tree[first_key], dict):
                 for key, query in query_tree[first_key].items():
-                    values.append(self.get_query_conditions({key: query}))
+                    values.append(self._get_query_conditions({key: query}))
             else:
                 for query in query_tree[first_key]:
-                    values.append(self.get_query_conditions(query))
+                    values.append(self._get_query_conditions(query))
 
             return values
         else:
@@ -323,20 +335,16 @@ class JameSQL:
             uuid_intersection = method(*uuids)
 
             new_values = defaultdict(int)
-            contexts = []
 
             for value in values:
                 for v in value:
                     if v.get("uuid") in uuid_intersection:
-                        new_values[v.get("uuid")] += v.get("_score", 0)
-                        contexts.extend(v.get("_context", []))
+                        new_values[v.get("uuid")] += v.get("_score", 1)
 
             docs = [self.global_index.get(uuid) for uuid in uuid_intersection]
 
             for doc in docs:
-                doc["_score"] = new_values.get(doc.get("uuid"))
-
-            doc["_context"] = contexts
+                doc["_score"] = new_values.get(doc.get("uuid"), 1)
 
             return docs
         else:
@@ -500,6 +508,6 @@ class JameSQL:
 
         # assign doc ranks
         for i, doc in enumerate(response):
-            doc["_score"] = matching_document_scores.get(doc["uuid"], 0) * boost_factor
+            doc["_score"] = matching_document_scores.get(doc["uuid"], 1) * boost_factor
 
         return response
