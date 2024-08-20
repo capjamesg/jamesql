@@ -65,6 +65,16 @@ def create_index():
         ),  # test limit
         (
             {
+                "query": {"title": {"contains": "it tolerate", "strict": True}},
+                "limit": 10,
+                "sort_by": "title",
+            },
+            0,
+            "",
+            DoesNotRaise(),
+        ),  # test an invalid query
+        (
+            {
                 "query": {"title": {"starts_with": "toler"}},
                 "limit": 10,
                 "sort_by": "title",
@@ -152,6 +162,17 @@ def create_index():
             "",
             DoesNotRaise(),
         ),  # test empty query
+        (
+            {
+                "query": "*",
+                "skip": 2,
+                "limit": 1,
+                "sort_by": "title",
+            },
+            1,
+            "tolerate it",
+            DoesNotRaise(),
+        ),  # test start query
         (
             {
                 "query": "*",
