@@ -2,10 +2,15 @@ import json
 from contextlib import ExitStack as DoesNotRaise
 
 import pytest
-from pytest import raises
 
 from jamesql import JameSQL
 
+@pytest.fixture
+def example_stub_and_query():
+    with open("tests/fixtures/example_stub_and_query.json") as f:
+        query = json.load(f)
+
+    return query
 
 @pytest.fixture
 def create_index():
@@ -65,6 +70,26 @@ def create_index():
         ),  # test limit
         (
             {
+                "query": {"lyric": {"contains": "my mural", "strict": True}},
+                "limit": 1,
+                "sort_by": "title",
+            },
+            1,
+            "tolerate it",
+            DoesNotRaise(),
+        ),  # test strict
+        (
+            {
+                "query": {"lyric": {"contains": "my murap", "strict": True, "fuzzy": True}},
+                "limit": 1,
+                "sort_by": "title",
+            },
+            1,
+            "tolerate it",
+            DoesNotRaise(),
+        ),  # test fuzzy and strict
+        (
+            {
                 "query": {"title": {"contains": "it tolerate", "strict": True}},
                 "limit": 10,
                 "sort_by": "title",
@@ -91,6 +116,46 @@ def create_index():
             },
             1,
             "The Bolter",
+            DoesNotRaise(),
+        ),  # test starts_with
+        (
+            {
+                "query": {"lyric": {"contains": "Startee with", "fuzzy": True}},
+                "limit": 10,
+                "sort_by": "title",
+            },
+            1,
+            "The Bolter",
+            DoesNotRaise(),
+        ),  # test fuzzy on contains
+        (
+            {
+                "query": {"lyric": {"starts_with": "Startee with", "fuzzy": True}},
+                "limit": 10,
+                "sort_by": "title",
+            },
+            1,
+            "The Bolter",
+            DoesNotRaise(),
+        ),  # test fuzzy on starts_with
+        (
+            {
+                "query": {"lyric": {"equals": "Startee with", "fuzzy": True}},
+                "limit": 10,
+                "sort_by": "title",
+            },
+            0,
+            "",
+            DoesNotRaise(),
+        ),  # fuzzy doesn't work on equals
+        (
+            {
+                "query": {"lyric": {"contains": "sky"}},
+                "limit": 10,
+                "sort_by": "lyric",
+            },
+            2,
+            "my tears ricochet",
             DoesNotRaise(),
         ),  # test starts_with
         (
@@ -194,6 +259,7 @@ def test_search(
 ):
     with raises_exception:
         index = create_index
+        
         response = index.search(query)
 
         assert len(response["documents"]) == number_of_documents_expected
@@ -203,6 +269,54 @@ def test_search(
 
         assert float(response["query_time"]) < 0.1
 
+@pytest.mark.parametrize(
+    "query, top_document_name, top_document_score, raises_exception",
+    [
+        (
+            {
+                "query":{"title": {"contains": "tolerate"}},
+                "limit": 2,
+                "query_score": "(_score + 2)",
+            },
+            "tolerate it",
+            3.0,
+            DoesNotRaise(),
+        ),
+        (
+            {
+                "query":{"title": {"contains": "tolerate"}},
+                "limit": 2,
+                "query_score": "(_score * 2)",
+            },
+            "tolerate it",
+            2.0,
+            DoesNotRaise(),
+        ),
+        (
+            {
+                "query": {"lyric": {"contains": "sky", "boost": 56}},
+                "limit": 10,
+                "sort_by": "title",
+            },
+            "my tears ricochet",
+            56.0,
+            DoesNotRaise(),
+        ),
+    ]
+)
+def test_query_score_and_boost(
+    create_index,
+    query,
+    top_document_name,
+    top_document_score,
+    raises_exception,
+):
+    with raises_exception:
+        index = create_index
+        response = index.search(query)
+
+        assert response["documents"][0]["title"] == top_document_name
+        assert response["documents"][0]["_score"] == top_document_score
 
 def test_add_item(
     create_index,
@@ -250,3 +364,14 @@ def test_remove_item(
     )
 
     assert len(response["documents"]) == 0
+
+def test_query_exceeding_maximum_subqueries(example_stub_and_query, create_index):
+    for i in range(0, 25):
+        example_stub_and_query["query"]["and"].append({"lyric" + str(i): {"contains": "kiss"}})
+
+    index = create_index
+
+    response = index.search(example_stub_and_query)
+
+    assert len(response["documents"]) == 0
+    assert response["error"].startswith("Too many query conditions.")

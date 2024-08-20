@@ -8,6 +8,7 @@ from jamesql import JameSQL
 import json
 import time
 from tqdm import tqdm
+from jamesql.index import GSI_INDEX_STRATEGIES
 
 with open("tests/fixtures/documents.json") as f:
     documents = json.load(f)
@@ -33,9 +34,10 @@ query = {
     },
     "limit": 2,
 }
-print("Creating GSI")
-index.create_gsi("title")
-index.create_gsi("lyric")
+
+print("Creating GSIs")
+index.create_gsi("title", strategy=GSI_INDEX_STRATEGIES.PREFIX)
+index.create_gsi("lyric", strategy=GSI_INDEX_STRATEGIES.CONTAINS)
 
 times = []
 
@@ -45,7 +47,7 @@ for i in tqdm(range(100)):
 
 average_query_time = sum(times) / len(times)
 
-print("Tests run across 100,000 queries")
+print("Tests run across 300,000 documents")
 
 if average_query_time < 0.0001:
     print("Average query time is less than 0.0001s")
