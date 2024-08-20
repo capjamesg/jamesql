@@ -117,8 +117,8 @@ def create_index():
             {"lyric": {"starts_with": "started with"}, "limit": 10, "sort_by": "title"},
             0,
             "",
-            raises(KeyError),
-        ),  # the query is missing the query key
+            DoesNotRaise(),
+        ),  # the query is missing the query key; this returns an "error" key but doesn't raise an error
         (
             {
                 "query": {

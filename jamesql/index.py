@@ -10,6 +10,9 @@ from typing import Dict, List
 import orjson
 import pybmoore
 import pygtrie
+from lark import Lark
+
+from .script_lang import JameSQLScriptTransformer, grammar
 
 INDEX_STORE = os.path.join(os.path.expanduser("~"), ".jamesql")
 
@@ -32,6 +35,7 @@ class GSI_INDEX_STRATEGIES(Enum):
 class RANKING_STRATEGIES(Enum):
     BOOST = "BOOST"
 
+JAMESQL_SCRIPT_SCORE_PARSER = Lark(grammar)
 
 class JameSQL:
     def __init__(self) -> None:
@@ -213,6 +217,7 @@ class JameSQL:
         if not query.get("query"):
             return {
                 "documents": [],
+                "error": "No query provided",
                 "query_time": str(round(time.time() - start_time, 4)),
             }
 
@@ -244,6 +249,16 @@ class JameSQL:
 
             results = sorted(results, key=lambda x: x[results_sort_by])
         else:
+            results = sorted(results, key=lambda x: x.get("_score", 1), reverse=True)
+
+        if query.get("query_score"):
+            tree = JAMESQL_SCRIPT_SCORE_PARSER.parse(query["query_score"])
+
+            for document in results:
+                transformer = JameSQLScriptTransformer(document)
+
+                document["_score"] = transformer.transform(tree)
+
             results = sorted(results, key=lambda x: x.get("_score", 1), reverse=True)
 
         if query.get("skip"):
@@ -314,7 +329,7 @@ class JameSQL:
                 for v in value:
                     if v.get("uuid") in uuid_intersection:
                         new_values[v.get("uuid")] += v.get("_score", 0)
-                        contexts.extend(v.get("_context"))
+                        contexts.extend(v.get("_context", []))
 
             docs = [self.global_index.get(uuid) for uuid in uuid_intersection]
 
