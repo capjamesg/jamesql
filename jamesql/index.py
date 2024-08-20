@@ -389,6 +389,7 @@ class JameSQL:
         query_terms = [query_term]
 
         if fuzzy:
+            # create versions of query where a letter is replaced in every possible position
             query_terms.extend(
                 [
                     query_term[:i] + c + query_term[i + 1 :]
@@ -396,6 +397,27 @@ class JameSQL:
                     for c in string.ascii_lowercase
                 ]
             )
+            # create versions of query where a letter is added in every possible position
+            query_terms.extend(
+                [
+                    query_term[:i] + c + query_term[i:]
+                    for i in range(len(query_term))
+                    for c in string.ascii_lowercase
+                ]
+            )
+            # remove a letter from every possible position
+            query_terms.extend(
+                [
+                    query_term[:i] + query_term[i + 1 :]
+                    for i in range(len(query_term))
+                ]
+            )
+
+        if query_type == "wildcard":
+            # replace * with every possible character
+            query_terms = [
+                query_term.replace("*", c) for c in string.ascii_lowercase
+            ]
 
         for query_term in query_terms:
             if gsi_type != GSI_INDEX_STRATEGIES.FLAT:
@@ -407,7 +429,7 @@ class JameSQL:
                     matching_documents.extend([gsi[match] for match in matches])
 
                 if (
-                    query_type == "contains"
+                    query_type in {"contains", "wildcard"}
                     and gsi_type == GSI_INDEX_STRATEGIES.CONTAINS
                 ):
                     if enforce_strict and len(query_term.split()) > 1:
@@ -492,7 +514,7 @@ class JameSQL:
 
                     matches = pybmoore.search(query_term, key)
 
-                    if query_type == "contains" and len(matches) > 0:
+                    if query_type in {"contains", "wildcard"} and len(matches) > 0:
                         matching_documents.extend(value)
                     elif query_type == "starts_with" and len(matches) > 0:
                         for match in matches:

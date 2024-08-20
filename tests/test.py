@@ -90,6 +90,26 @@ def create_index():
         ),  # test fuzzy and strict
         (
             {
+                "query": {"title": {"wildcard": "tolerat*"}},
+                "limit": 1,
+                "sort_by": "title",
+            },
+            1,
+            "tolerate it",
+            DoesNotRaise(),
+        ),  # test wildcard
+        (
+            {
+                "query": {"lyric": {"wildcard": "my mura*", "strict": True}},
+                "limit": 1,
+                "sort_by": "title",
+            },
+            1,
+            "tolerate it",
+            DoesNotRaise(),
+        ),  # test wildcard and strict
+        (
+            {
                 "query": {"title": {"contains": "it tolerate", "strict": True}},
                 "limit": 10,
                 "sort_by": "title",
