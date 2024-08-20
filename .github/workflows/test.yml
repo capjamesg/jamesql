@@ -29,6 +29,7 @@ jobs:
           pip install -e .[dev]
 
       - name: 🧪 Test
-        env:
-          SITE_ENV: production
-        run: "python -m pytest ./tests/test.py"
+        run: |
+          python -m pytest ./tests/test.py
+          python -m pytest ./tests/script_lang.py
+
