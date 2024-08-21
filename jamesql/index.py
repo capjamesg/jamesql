@@ -39,13 +39,71 @@ class GSI_INDEX_STRATEGIES(Enum):
 class RANKING_STRATEGIES(Enum):
     BOOST = "BOOST"
 
+
 JAMESQL_SCRIPT_SCORE_PARSER = Lark(grammar)
 
+
 class JameSQL:
+    SELF_METHODS = {"close_to": "_close_to"}
+
     def __init__(self) -> None:
         self.global_index = {}
         self.uuids_to_position_in_global_index = {}
         self.gsis = {}
+
+    def _close_to(self, query: list) -> dict:
+        """
+        Accepts a query and returns a query that is close to the original query.
+
+        This is useful for finding documents that are similar to the original query.
+        """
+        matching_documents = set()
+
+        positions = defaultdict(int)
+
+        stride = query[0].get("distance", 3)
+
+        for i, item in enumerate(query):
+            if i == 0:
+                continue
+
+            field = list(item.keys())[0]
+            value = item[field]
+
+            previous_word = (
+                query[i - 1][list(query[i - 1].keys())[0]] if i > 0 else None
+            )
+
+            if not self.gsis.get(field):
+                self.create_gsi(field, GSI_INDEX_STRATEGIES.CONTAINS)
+
+            gsi = self.gsis[field]
+            gsi_index = gsi["gsi"]
+
+            previous_word_positions = gsi_index.get(previous_word)["documents"]["uuid"]
+            current_word_positions = gsi_index.get(value)["documents"]["uuid"]
+
+            stride_range = range(-stride, stride + 1)
+
+            if gsi["strategy"] == GSI_INDEX_STRATEGIES.CONTAINS:
+                for doc_id, positions in current_word_positions.items():
+                    if doc_id not in previous_word_positions:
+                        continue
+
+                    if matching_documents and doc_id not in matching_documents:
+                        continue
+
+                    for position in set(positions):
+                        for stride_value in stride_range:
+                            if (
+                                position + stride_value
+                                in previous_word_positions[doc_id]
+                            ):
+                                matching_documents.add(doc_id)
+
+        documents = [self.global_index.get(doc_id) for doc_id in matching_documents]
+
+        return documents
 
     def _create_reverse_index(
         self, documents: str, index_by: str
@@ -61,8 +119,6 @@ class JameSQL:
         index = defaultdict(dict)
 
         for document in documents:
-            doc_pos = 0
-
             for pos, word in enumerate(document[index_by].split()):
                 if not index.get(word):
                     index[word] = {
@@ -74,10 +130,8 @@ class JameSQL:
                     }
 
                 index[word]["count"] += 1
-                index[word]["documents"]["uuid"][document["uuid"]].append(doc_pos)
+                index[word]["documents"]["uuid"][document["uuid"]].append(pos)
                 index[word]["documents"]["count"][document["uuid"]] += 1
-
-                doc_pos += len(word) + 1
 
         return index
 
@@ -235,10 +289,12 @@ class JameSQL:
             if len(number_of_query_conditions) > MAXIMUM_QUERY_STATEMENTS:
                 return {
                     "documents": [],
-                    "error": "Too many query conditions. Maximum is " + str(MAXIMUM_QUERY_STATEMENTS) + ".",
+                    "error": "Too many query conditions. Maximum is "
+                    + str(MAXIMUM_QUERY_STATEMENTS)
+                    + ".",
                     "query_time": str(round(time.time() - start_time, 4)),
                 }
-            
+
             results = self._recursively_parse_query(query["query"])
 
             if len(results) > 0 and isinstance(results[0], dict):
@@ -268,6 +324,9 @@ class JameSQL:
             tree = JAMESQL_SCRIPT_SCORE_PARSER.parse(query["query_score"])
 
             for document in results:
+                if document.get("_score") is None:
+                    document["_score"] = 1
+
                 transformer = JameSQLScriptTransformer(document)
 
                 document["_score"] = transformer.transform(tree)
@@ -276,6 +335,8 @@ class JameSQL:
 
         if query.get("skip"):
             results = results[query["skip"] :]
+
+        total_results = len(results)
 
         if results_limit:
             results = results[:results_limit]
@@ -286,6 +347,7 @@ class JameSQL:
         return {
             "documents": results,
             "query_time": str(round(end_time - start_time, 4)),
+            "total_results": total_results,
         }
 
     def _get_query_conditions(self, query_tree):
@@ -347,6 +409,10 @@ class JameSQL:
                 doc["_score"] = new_values.get(doc.get("uuid"), 1)
 
             return docs
+        elif first_key in self.SELF_METHODS:
+            func = self.SELF_METHODS[first_key]
+
+            return getattr(self, func)(query_tree[first_key])
         else:
             results = [
                 doc
@@ -407,17 +473,12 @@ class JameSQL:
             )
             # remove a letter from every possible position
             query_terms.extend(
-                [
-                    query_term[:i] + query_term[i + 1 :]
-                    for i in range(len(query_term))
-                ]
+                [query_term[:i] + query_term[i + 1 :] for i in range(len(query_term))]
             )
 
         if query_type == "wildcard":
             # replace * with every possible character
-            query_terms = [
-                query_term.replace("*", c) for c in string.ascii_lowercase
-            ]
+            query_terms = [query_term.replace("*", c) for c in string.ascii_lowercase]
 
         for query_term in query_terms:
             if gsi_type != GSI_INDEX_STRATEGIES.FLAT:
@@ -459,7 +520,7 @@ class JameSQL:
                                 if doc_id not in next_word_positions:
                                     continue
 
-                                for position in positions:
+                                for position in set(positions):
                                     if (
                                         position + len(current_word) + 1
                                         in next_word_positions[doc_id]
