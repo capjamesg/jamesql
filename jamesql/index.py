@@ -165,7 +165,7 @@ class JameSQL:
             ]
             self.gsis = structure["gsis"]
 
-    def add(self, document: list, partition_key=None) -> Dict[str, dict]:
+    def add(self, document: list, doc_id=None) -> Dict[str, dict]:
         """
         This function accepts a list of documents and turns them into a dictionary with the structure:
 
@@ -176,12 +176,12 @@ class JameSQL:
         Every document is assigned a UUID.
         """
 
-        document["uuid"] = uuid.uuid4().hex
+        if doc_id:
+            document["uuid"] = doc_id
+        else:
+            doc_uuid = uuid.uuid4().hex
 
-        if partition_key is None:
-            partition_key = document["uuid"]
-
-        self.global_index[partition_key] = document
+        self.global_index[doc_uuid] = document
 
         self.uuids_to_position_in_global_index[document["uuid"]] = (
             len(self.global_index) - 1
