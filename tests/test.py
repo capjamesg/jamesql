@@ -4,6 +4,15 @@ from contextlib import ExitStack as DoesNotRaise
 import pytest
 
 from jamesql import JameSQL
+from jamesql.index import GSI_INDEX_STRATEGIES
+
+import sys
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--benchmark",
+        action="store"
+    )
 
 @pytest.fixture
 def example_stub_and_query():
@@ -12,8 +21,8 @@ def example_stub_and_query():
 
     return query
 
-@pytest.fixture
-def create_index():
+@pytest.fixture(scope="session")
+def create_indices(request):
     with open("tests/fixtures/documents.json") as f:
         documents = json.load(f)
 
@@ -22,8 +31,26 @@ def create_index():
     for document in documents:
         index.add(document)
 
-    return index
+    with open("tests/fixtures/documents.json") as f:
+        documents = json.load(f)
 
+    if request.config.getoption("--benchmark") or request.config.getoption("--long-benchmark"):
+        large_index = JameSQL()
+
+        for document in documents * 100000:
+            if request.config.getoption("--long-benchmark"):
+                document = document.copy()
+                document["title"] = "".join(
+                    [word + " " for word in document["title"].split() for _ in range(10)]
+                )
+            large_index.add(document)
+
+        large_index.create_gsi("title", strategy=GSI_INDEX_STRATEGIES.CONTAINS)
+        large_index.create_gsi("lyric", strategy=GSI_INDEX_STRATEGIES.CONTAINS)
+    else:
+        large_index = None
+
+    return index, large_index
 
 @pytest.mark.parametrize(
     "query, number_of_documents_expected, top_result_value, raises_exception",
@@ -270,15 +297,16 @@ def create_index():
         ),  # test all query
     ],
 )
+@pytest.mark.timeout(10)
 def test_search(
-    create_index,
+    create_indices,
     query,
     number_of_documents_expected,
     top_result_value,
     raises_exception,
 ):
     with raises_exception:
-        index = create_index
+        index, large_index = create_indices
         
         response = index.search(query)
 
@@ -288,6 +316,12 @@ def test_search(
             assert response["documents"][0]["title"] == top_result_value
 
         assert float(response["query_time"]) < 0.1
+
+        # run if --benchmark is passed
+        if "--benchmark" in sys.argv:
+            response = large_index.search(query)
+
+            assert float(response["query_time"]) < 0.1
 
 @pytest.mark.parametrize(
     "query, top_document_name, top_document_score, raises_exception",
@@ -325,23 +359,23 @@ def test_search(
     ]
 )
 def test_query_score_and_boost(
-    create_index,
+    create_indices,
     query,
     top_document_name,
     top_document_score,
     raises_exception,
 ):
     with raises_exception:
-        index = create_index
+        index, large_index = create_indices
         response = index.search(query)
 
         assert response["documents"][0]["title"] == top_document_name
         assert response["documents"][0]["_score"] == top_document_score
 
 def test_add_item(
-    create_index,
+    create_indices,
 ):
-    index = create_index
+    index, _ = create_indices
 
     index.add({"title": "shake it off", "lyric": "I stay out too late"})
 
@@ -353,15 +387,13 @@ def test_add_item(
         }
     )
 
-    print(response)
-
     assert len(response["documents"]) == 1
 
 
 def test_remove_item(
-    create_index,
+    create_indices,
 ):
-    index = create_index
+    index, large_index = create_indices
 
     response = index.search(
         {
@@ -385,11 +417,11 @@ def test_remove_item(
 
     assert len(response["documents"]) == 0
 
-def test_query_exceeding_maximum_subqueries(example_stub_and_query, create_index):
+def test_query_exceeding_maximum_subqueries(example_stub_and_query, create_indices):
     for i in range(0, 25):
         example_stub_and_query["query"]["and"].append({"lyric" + str(i): {"contains": "kiss"}})
 
-    index = create_index
+    index, large_index = create_indices
 
     response = index.search(example_stub_and_query)
 
