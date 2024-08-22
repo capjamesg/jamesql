@@ -85,6 +85,38 @@ You can retrieve all documents by using a catch-all query, which uses the follow
 
 This is useful if you want to page through documents. You should supply a `sort_by` field to ensure the order of documents is consistent.
 
+#### Response
+
+All valid queries return responses in the following form:
+
+```json
+{
+    "documents": [
+        {"uuid": "1", "title": "test", "artist": "..."},
+        {"uuid": "2", "title": "test", "artist": "..."},
+        ...
+    ],
+    "query_time": 0.0001,
+    "total_results": 200
+}
+```
+
+`documents` is a list of documents that match the query. `query_time` is the amount of time it took to execute the query. `total_results` is the total number of documents that match the query before applying any `limit`.
+
+`total_results` is useful for implementing pagination.
+
+If an error was encountered, the response will be in the following form:
+
+```json
+{
+    "documents": [],
+    "query_time": 0.0001,
+    "error": "Invalid query"
+}
+```
+
+The `error` key contains a message describing the exact error encountered.
+
 ### Document ranking
 
 By default, documents are ranked in no order. If you provide a `sort_by` field, documents are sorted by that field.
@@ -123,6 +155,61 @@ This query would search for documents whose `post` field contains `taylor swift`
 The score for each document before boosting is equal to the number of times the query condition is satisfied. For example, if a post contains `taylor swift` twice, the score for that document is `2`; if a title contains `desk` once, the score for that document is `1`.
 
 Documents are then ranked in decreasing order of score.
+
+#### Document ranking with script scores
+
+The script score feature lets you write custom scripts to calculate the score for each document. This is useful if you want to calculate a score based on multiple fields, including numeric fields.
+
+Script scores are applied after all documents are retrieved.
+
+The script score feature supports the following mathematical operations:
+
+- `+` (addition)
+- `-` (subtraction)
+- `*` (multiplication)
+- `/` (division)
+- `log` (logarithm)
+
+You can apply a script score at the top level of your query:
+
+```python
+{
+    "query": {
+        "or": {
+            "post": {
+                "contains": "taylor swift",
+                "strict": False,
+                "boost": 1
+            },
+            "title": {
+                "contains": "desk",
+                "strict": True,
+                "boost": 25
+            }
+        }
+    },
+    "limit": 4,
+    "sort_by": "_score",
+    "script_score": "((post + title) * 2)"
+}
+```
+
+The above example will calculate the score of documents by adding the score of the `post` field and the `title` field, then multiplying the result by `2`.
+
+A script score is made up of terms. A term is a field name or number (float or int), followed by an operator, followed by another term or number. Terms can be nested.
+
+All terms must be enclosed within parentheses.
+
+To compute a score that adds the `post` score to `title` and multiplies the result by `2`, use the following code:
+
+```text
+((post + title) * 2)
+```
+
+Invalid forms of this query include:
+
+- `post + title * 2` (missing parentheses)
+- `(post + title * 2)` (terms can only include one operator)
 
 ### Condition matching
 
@@ -233,6 +320,41 @@ query = {
 }
 ```
 
+### Wildcard matching
+
+You can match documents using a single wildcard character. This character is represented by an asterisk `*`.
+
+```python
+query = {
+    "query": {
+        "title": {
+            "contains": "tolerat* it",
+            "fuzzy": True
+        }
+    }
+}
+```
+
+This query will look for all words that match the pattern `tolerat* it`, where the `*` character can be any single character.
+
+### Look for terms close to each other
+
+You can find terms that appear close to each other with a `close_to` query. Here is an example of a query that looks for documents where `made` and `temple` appear within `7` words of each other and `my` appears within `7` words of `temple`:
+
+```python
+query = {
+    "query": {
+        "close_to": [
+            {"lyric": "made"},
+            {"lyric": "temple,"},
+            {"lyric": "my"},
+        ],
+        "distance": 7
+    },
+    "limit": 10
+}
+```
+
 ### Update documents
 
 You need a document UUID to update a document. You can retrieve a UUID by searching for a document.
@@ -305,24 +427,38 @@ The web interface will run on `localhost:5000`.
 
 ## Testing
 
-This project comes with two test suites:
-
-- Unit tests
-- A benchmarking test
-
-You can run the unit tests using:
+You can run the project unit tests with the following command:
 
 ```
-pytest tests/test.py
+pytest tests/*.py
 ```
 
-You can run the benchmark test using:
+The tests have three modes:
+
+1. Run all unit tests.
+2. Run all unit tests with an index of 30,000 small documents and ensure the query engine is fast.
+3. Run all unit tests with an index of 30,000 documents with a few dozen words and ensure the query engine is fast.
+
+To run the 30,000 small documents benchmark tests, run:
 
 ```
-pytest tests/stress.py
+pytest tests/*.py --benchmark
 ```
 
-The benchmark test evaluates how long it takes to run a query in a database with 300,000 records.
+To run the 30,000 documents with a few dozen words benchmark tests, run:
+
+```
+pytest tests/*.py --long-benchmark
+```
+
+In development, the goal should be making the query engine as fast as possible. The performance tests are designed to monitor for performance regressions, not set a ceiling for acceptable performance.
+
+## Development notes
+
+The following are notes that describe limitations of which I am aware, and may fix in the future:
+
+- `boost` does not work with and/or queries.
+- The query engine relies on `uuid`s to uniquely identify items. But these are treated as the partition key, which is not appropriate. Two documents should be able to have the same partition key, as long as they have their own `uuid`.
 
 ## License
 
