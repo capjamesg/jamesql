@@ -85,7 +85,7 @@ class JameSQL:
 
             stride_range = range(-stride, stride + 1)
 
-            if gsi["strategy"] == GSI_INDEX_STRATEGIES.CONTAINS:
+            if gsi["strategy"] == GSI_INDEX_STRATEGIES.CONTAINS.name:
                 for doc_id, positions in current_word_positions.items():
                     if doc_id not in previous_word_positions:
                         continue
@@ -179,9 +179,9 @@ class JameSQL:
         if doc_id:
             document["uuid"] = doc_id
         else:
-            doc_uuid = uuid.uuid4().hex
+            document["uuid"] = uuid.uuid4().hex
 
-        self.global_index[doc_uuid] = document
+        self.global_index[document["uuid"]] = document
 
         self.uuids_to_position_in_global_index[document["uuid"]] = (
             len(self.global_index) - 1
@@ -263,7 +263,7 @@ class JameSQL:
                 + "."
             )
 
-        self.gsis[index_by] = {"gsi": gsi, "strategy": strategy}
+        self.gsis[index_by] = {"gsi": gsi, "strategy": strategy.name}
 
         return gsi
 
@@ -445,7 +445,8 @@ class JameSQL:
         if not self.gsis.get(query_field):
             self.create_gsi(query_field, GSI_INDEX_STRATEGIES.FLAT)
 
-        gsi_type = self.gsis[query_field]["strategy"]
+        gsi_type = GSI_INDEX_STRATEGIES[self.gsis[query_field]["strategy"]]
+
         gsi = self.gsis[query_field]["gsi"]
 
         fuzzy = query["query"][query_field].get("fuzzy", False)
