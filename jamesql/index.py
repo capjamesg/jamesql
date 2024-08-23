@@ -12,6 +12,8 @@ import pybmoore
 import pygtrie
 from lark import Lark
 
+from jamesql.rewriter import string_query_to_jamesql
+
 from .script_lang import JameSQLScriptTransformer, grammar
 
 INDEX_STORE = os.path.join(os.path.expanduser("~"), ".jamesql")
@@ -19,9 +21,9 @@ INDEX_STORE = os.path.join(os.path.expanduser("~"), ".jamesql")
 if not os.path.exists(INDEX_STORE):
     os.makedirs(INDEX_STORE)
 
-KEYW0RDS = ["and", "or"]
+KEYW0RDS = ["and", "or", "not"]
 
-METHODS = {"and": set.intersection, "or": set.union}
+METHODS = {"and": set.intersection, "or": set.union, "not": set.difference}
 
 RESERVED_QUERY_TERMS = ["strict"]
 
@@ -133,6 +135,16 @@ class JameSQL:
                 index[word]["documents"]["uuid"][document["uuid"]].append(pos)
                 index[word]["documents"]["count"][document["uuid"]] += 1
 
+            # allow equals lookup
+            if not index.get(document[index_by]):
+                index[document[index_by]] = {
+                    "count": 0,
+                    "documents": {"uuid": defaultdict(list), "count": defaultdict(int)},
+                }
+            index[document[index_by]]["count"] += 1
+            index[document[index_by]]["documents"]["uuid"][document["uuid"]].append(pos)
+            index[document[index_by]]["documents"]["count"][document["uuid"]] += 1
+
         return index
 
     def save(self, index_name: str) -> None:
@@ -164,6 +176,33 @@ class JameSQL:
                 "uuids_to_position_in_global_index"
             ]
             self.gsis = structure["gsis"]
+
+    def _compute_string_query(self, query: str, query_keys: list = []) -> List[str]:
+        """
+        Accepts a string query and returns a list of matching documents.
+        """
+
+        if not query_keys:
+            query_keys = list(self.gsis.keys())
+
+        indexing_strategies = {
+            name: gsi["strategy"].lower() for name, gsi in self.gsis.items()
+        }
+
+        query = string_query_to_jamesql(
+            query, query_keys=query_keys, default_strategies=indexing_strategies
+        )
+
+        return query
+
+    def string_query_search(self, query: str, query_keys: list = []) -> List[str]:
+        """
+        Accepts a string query and returns a list of matching documents.
+        """
+
+        query = self._compute_string_query(query, query_keys)
+
+        return self.search(query)
 
     def add(self, document: list, doc_id=None) -> Dict[str, dict]:
         """
@@ -376,50 +415,63 @@ class JameSQL:
         If a node is a query, the query is evaluated. If a node is a keyword, the keyword is evaluated
         with the query results from the children nodes.
         """
-        first_key = list(
-            [key for key in query_tree.keys() if key not in RESERVED_QUERY_TERMS]
-        )[0]
+        acc = set()
 
-        if first_key in KEYW0RDS:
-            values = []
+        for first_key in query_tree.keys():
+            if first_key in RESERVED_QUERY_TERMS:
+                continue
 
-            method = METHODS[first_key]
+            if first_key in KEYW0RDS:
+                values = []
 
-            if isinstance(query_tree[first_key], dict):
-                for key, query in query_tree[first_key].items():
-                    values.append(self._recursively_parse_query({key: query}))
+                method = METHODS[first_key]
+
+                if isinstance(query_tree[first_key], dict):
+                    for key, query in query_tree[first_key].items():
+                        values.append(self._recursively_parse_query({key: query}))
+                else:
+                    for query in query_tree[first_key]:
+                        values.append(self._recursively_parse_query(query))
+
+                uuids = [set([doc.get("uuid") for doc in value]) for value in values]
+
+                if len(uuids) == 0:
+                    uuids = [set()]
+
+                if first_key == "not":
+                    uuid_intersection = set(self.global_index.keys()).difference(
+                        uuids[0]
+                    )
+                else:
+                    uuid_intersection = method(*uuids)
+
+                new_values = defaultdict(int)
+
+                for value in values:
+                    for v in value:
+                        if v.get("uuid") in uuid_intersection:
+                            new_values[v.get("uuid")] += v.get("_score", 1)
+
+                docs = [self.global_index.get(uuid) for uuid in uuid_intersection]
+
+                for doc in docs:
+                    doc["_score"] = new_values.get(doc.get("uuid"), 1)
+
+                acc = set.union(acc, uuid_intersection)
+            elif first_key in self.SELF_METHODS:
+                func = self.SELF_METHODS[first_key]
+
+                acc = set.union(getattr(self, func)(query_tree[first_key]))
             else:
-                for query in query_tree[first_key]:
-                    values.append(self._recursively_parse_query(query))
+                results = [
+                    doc
+                    for doc in self._run(
+                        {"query": query_tree}, list(query_tree.keys())[0]
+                    )
+                ]
+                acc = set.union(acc, set([doc.get("uuid") for doc in results]))
 
-            uuids = [set([doc.get("uuid") for doc in value]) for value in values]
-
-            uuid_intersection = method(*uuids)
-
-            new_values = defaultdict(int)
-
-            for value in values:
-                for v in value:
-                    if v.get("uuid") in uuid_intersection:
-                        new_values[v.get("uuid")] += v.get("_score", 1)
-
-            docs = [self.global_index.get(uuid) for uuid in uuid_intersection]
-
-            for doc in docs:
-                doc["_score"] = new_values.get(doc.get("uuid"), 1)
-
-            return docs
-        elif first_key in self.SELF_METHODS:
-            func = self.SELF_METHODS[first_key]
-
-            return getattr(self, func)(query_tree[first_key])
-        else:
-            results = [
-                doc
-                for doc in self._run({"query": query_tree}, list(query_tree.keys())[0])
-            ]
-
-            return results
+        return [self.global_index.get(doc_id) for doc_id in acc]
 
     def _run(self, query: dict, query_field: str) -> List[str]:
         """
@@ -566,7 +618,14 @@ class JameSQL:
                                     {uuid_of_document: count}
                                 )
                 if query_type == "equals":
-                    matching_documents.extend(gsi.get(query_term, []))
+                    matching_documents.extend(
+                        [
+                            doc_uuid
+                            for doc_uuid in gsi.get(query_term, {})
+                            .get("documents", {})
+                            .get("uuid", [])
+                        ]
+                    )
             elif query_type == "equals":
                 matching_documents.extend(gsi.get(query_term, []))
             else:
