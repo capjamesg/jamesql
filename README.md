@@ -17,6 +17,8 @@ Here is an example of a query run in the JameSQL web interface:
 
 ![JameSQL web interface](assets/screenshot.png)
 
+JamesQL is designed for use in single-threaded applications. It is not designed for use in multi-threaded applications.
+
 ## Installation
 
 To install this project, run:
@@ -231,6 +233,14 @@ query = {
 }
 ```
 
+These operators can be used with three query types:
+
+- `and`
+- `or`
+- `not`
+
+### and
+
 You can also search for documents that have the `artist` field set to `Taylor Swift` and the `title` field set to `tolerate it`:
 
 ```python
@@ -252,6 +262,8 @@ query = {
 }
 ```
 
+### or
+
 You can nest conditions to create complex queries, like:
 
 ```python
@@ -270,13 +282,34 @@ query = {
 }
 ```
 
+This will return a list of documents that match the query.
+
+### not
+
+You can search for documents that do not match a query by using the `not` operator. Here is an example of a query that searches for lyrics that contain `sky` but not `kiss`:
+
+```python
+query = {
+    "query": {
+        "and": {
+            "or": [
+                {"lyric": {"contains": "sky", "boost": 3}},
+            ],
+            "not": {"lyric": {"contains": "kiss"}},
+        }
+    },
+    "limit": 10,
+    "sort_by": "title",
+}
+```
+
+### Running a search
+
 To search for documents that match a query, use the following code:
 
 ```python
 result = index.search(query)
 ```
-
-This will return a list of documents that match the query.
 
 ### Strict matching
 
