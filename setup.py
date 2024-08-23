@@ -25,7 +25,7 @@ setuptools.setup(
     ],
     packages=find_packages(exclude=("tests",)),
     extras_require={
-        "dev": ["flake8", "black==22.3.0", "isort", "twine", "pytest", "wheel", "flask", "orjson", "tqdm"],
+        "dev": ["flake8", "black==22.3.0", "isort", "twine", "pytest", "wheel", "flask", "orjson", "tqdm", "deepdive"],
     },
     classifiers=[
         "Programming Language :: Python :: 3",
