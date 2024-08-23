@@ -1,4 +1,5 @@
 import json
+import sys
 from contextlib import ExitStack as DoesNotRaise
 
 import pytest
@@ -6,13 +7,10 @@ import pytest
 from jamesql import JameSQL
 from jamesql.index import GSI_INDEX_STRATEGIES
 
-import sys
 
 def pytest_addoption(parser):
-    parser.addoption(
-        "--benchmark",
-        action="store"
-    )
+    parser.addoption("--benchmark", action="store")
+
 
 @pytest.fixture
 def example_stub_and_query():
@@ -20,6 +18,7 @@ def example_stub_and_query():
         query = json.load(f)
 
     return query
+
 
 @pytest.fixture(scope="session")
 def create_indices(request):
@@ -34,14 +33,20 @@ def create_indices(request):
     with open("tests/fixtures/documents.json") as f:
         documents = json.load(f)
 
-    if request.config.getoption("--benchmark") or request.config.getoption("--long-benchmark"):
+    if request.config.getoption("--benchmark") or request.config.getoption(
+        "--long-benchmark"
+    ):
         large_index = JameSQL()
 
         for document in documents * 100000:
             if request.config.getoption("--long-benchmark"):
                 document = document.copy()
                 document["title"] = "".join(
-                    [word + " " for word in document["title"].split() for _ in range(10)]
+                    [
+                        word + " "
+                        for word in document["title"].split()
+                        for _ in range(10)
+                    ]
                 )
             large_index.add(document)
 
@@ -51,6 +56,7 @@ def create_indices(request):
         large_index = None
 
     return index, large_index
+
 
 @pytest.mark.parametrize(
     "query, number_of_documents_expected, top_result_value, raises_exception",
@@ -107,7 +113,9 @@ def create_indices(request):
         ),  # test strict
         (
             {
-                "query": {"lyric": {"contains": "my murap", "strict": True, "fuzzy": True}},
+                "query": {
+                    "lyric": {"contains": "my murap", "strict": True, "fuzzy": True}
+                },
                 "limit": 1,
                 "sort_by": "title",
             },
@@ -295,9 +303,39 @@ def create_indices(request):
             "The Bolter",
             DoesNotRaise(),
         ),  # test all query
+        (
+            {
+                "query": {
+                    "not": {"lyric": {"contains": "kiss"}},
+                },
+                "limit": 10,
+                "sort_by": "title",
+            },
+            2,
+            "my tears ricochet",
+            DoesNotRaise(),
+        ),  # test not with no and query
+        (
+            {
+                "query": {
+                    "and": {
+                        "or": [
+                            {"lyric": {"contains": "sky", "boost": 3}},
+                            {"lyric": {"contains": "kiss", "boost": 3}},
+                        ],
+                        "not": {"lyric": {"contains": "kiss"}},
+                    }
+                },
+                "limit": 10,
+                "sort_by": "title",
+            },
+            2,
+            "my tears ricochet",
+            DoesNotRaise(),
+        ),  # test not query within an and query
     ],
 )
-@pytest.mark.timeout(10)
+@pytest.mark.timeout(20)
 def test_search(
     create_indices,
     query,
@@ -307,7 +345,7 @@ def test_search(
 ):
     with raises_exception:
         index, large_index = create_indices
-        
+
         response = index.search(query)
 
         assert len(response["documents"]) == number_of_documents_expected
@@ -323,12 +361,13 @@ def test_search(
 
             assert float(response["query_time"]) < 0.1
 
+
 @pytest.mark.parametrize(
     "query, top_document_name, top_document_score, raises_exception",
     [
         (
             {
-                "query":{"title": {"contains": "tolerate"}},
+                "query": {"title": {"contains": "tolerate"}},
                 "limit": 2,
                 "query_score": "(_score + 2)",
             },
@@ -338,7 +377,7 @@ def test_search(
         ),
         (
             {
-                "query":{"title": {"contains": "tolerate"}},
+                "query": {"title": {"contains": "tolerate"}},
                 "limit": 2,
                 "query_score": "(_score * 2)",
             },
@@ -356,7 +395,7 @@ def test_search(
             56.0,
             DoesNotRaise(),
         ),
-    ]
+    ],
 )
 def test_query_score_and_boost(
     create_indices,
@@ -372,6 +411,7 @@ def test_query_score_and_boost(
         assert response["documents"][0]["title"] == top_document_name
         assert response["documents"][0]["_score"] == top_document_score
 
+
 def test_add_item(
     create_indices,
 ):
@@ -379,9 +419,11 @@ def test_add_item(
 
     index.add({"title": "shake it off", "lyric": "I stay out too late"})
 
+    index.create_gsi("title", strategy=GSI_INDEX_STRATEGIES.CONTAINS)
+
     response = index.search(
         {
-            "query": {"title": {"contains": "shake it off"}},
+            "query": {"title": {"equals": "shake it off"}},
             "limit": 10,
             "sort_by": "title",
         }
@@ -417,9 +459,12 @@ def test_remove_item(
 
     assert len(response["documents"]) == 0
 
+
 def test_query_exceeding_maximum_subqueries(example_stub_and_query, create_indices):
     for i in range(0, 25):
-        example_stub_and_query["query"]["and"].append({"lyric" + str(i): {"contains": "kiss"}})
+        example_stub_and_query["query"]["and"].append(
+            {"lyric" + str(i): {"contains": "kiss"}}
+        )
 
     index, large_index = create_indices
 

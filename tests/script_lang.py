@@ -1,10 +1,13 @@
-from jamesql.script_lang import JameSQLScriptTransformer, grammar
-from jamesql import JameSQL
-from lark import Lark
-import pytest
 import json
 from contextlib import ExitStack as DoesNotRaise
+
+import pytest
+from lark import Lark
 from pytest import raises
+
+from jamesql import JameSQL
+from jamesql.script_lang import JameSQLScriptTransformer, grammar
+
 
 @pytest.fixture
 def document_to_test():
@@ -20,6 +23,7 @@ def document_to_test():
 @pytest.fixture
 def script_score_parser():
     return Lark(grammar)
+
 
 @pytest.mark.parametrize(
     "query, result, raises_exception",
@@ -82,22 +86,23 @@ def script_score_parser():
         (
             "_score + 1",
             0,
-            raises(Exception), # missing parenthesis
+            raises(Exception),  # missing parenthesis
         ),
         (
             "(_score + 1",
             0,
-            raises(Exception), # missing closing parenthesis
+            raises(Exception),  # missing closing parenthesis
         ),
         (
             "(_score + 1))",
             0,
-            raises(Exception), # additional closing parenthesis
+            raises(Exception),  # additional closing parenthesis
         ),
-    ]
+    ],
 )
-
-def test_script_score(document_to_test, script_score_parser, query, result, raises_exception):
+def test_script_score(
+    document_to_test, script_score_parser, query, result, raises_exception
+):
     with raises_exception:
         tree = script_score_parser.parse(query)
 
