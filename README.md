@@ -444,6 +444,34 @@ response = index.search(
 assert len(response["documents"]) == 0
 ```
 
+## String queries
+
+JameSQL supports string queries. String queries are single strings that use special syntax to assert the meaning of parts of a string.
+
+For example, you could use the following query to find documents where the `title` field contains `tolerate it` and any field contains `mural`:
+
+```
+title:"tolerate it" mural
+```
+
+The following operators are supported:
+
+- `-term`: Search for documents that do not contain `term`.
+- `term`: Search for documents that contain `term`.
+- `term1 term2`: Search for documents that contain `term1` and `term2`.
+- `'term1 term2'`: Search for the literal phrase `term1 term2` in documents.
+- `field:'term'`: Search for documents where the `field` field contains `term` (i.e. `title:"tolerate it"`).
+
+This feature turns a string query into a JameSQL query, which is then executed and the results returned.
+
+To run a string query, use the following code:
+
+```python
+results = index.string_query_search("title:'tolerate it' mural")
+```
+
+_Note: Single quotes (') must be used to denote literal terms. Quotation marks (") do not yet work._
+
 ## Web Interface
 
 JameSQL comes with a limited web interface designed for use in testing queries.
