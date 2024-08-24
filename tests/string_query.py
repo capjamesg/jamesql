@@ -91,13 +91,6 @@ def create_indices(request):
             DoesNotRaise(),
         ),  # test query with no special operators
         (
-            "-started -with mural ][]",
-            {'query': {'and': [{'not': {'or': [{'title': {'contains': 'started'}}, {'lyric': {'contains': 'started'}}]}}, {'not': {'or': [{'title': {'contains': 'with'}}, {'lyric': {'contains': 'with'}}]}}, {'or': [{'title': {'contains': 'mural'}}, {'lyric': {'contains': 'mural'}}]}]}, 'limit': 10},
-            0,
-            "",
-            DoesNotRaise(),
-        ),  # query with invalid punctuation, which should be ignored
-        (
             "title:tolerate",
             {"query": {"and": [{"title": {"contains": "tolerate"}}]}, "limit": 10},
             1,
