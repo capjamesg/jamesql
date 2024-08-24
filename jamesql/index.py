@@ -44,7 +44,6 @@ class GSI_INDEX_STRATEGIES(Enum):
 class RANKING_STRATEGIES(Enum):
     BOOST = "BOOST"
 
-
 JAMESQL_SCRIPT_SCORE_PARSER = Lark(grammar)
 
 QUERY_TYPE_COMPARISON_METHODS = {
@@ -202,9 +201,7 @@ class JameSQL:
         if not query_keys:
             query_keys = list(self.gsis.keys())
 
-        indexing_strategies = {
-            name: gsi["strategy"].lower() for name, gsi in self.gsis.items()
-        }
+        indexing_strategies = {}
 
         query = string_query_to_jamesql(
             query, query_keys=query_keys, default_strategies=indexing_strategies

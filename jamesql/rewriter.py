@@ -34,8 +34,8 @@ class QueryRewriter(Transformer):
         self.query_keys = query_keys
 
     def get_query_strategy(self, key="", value=""):
-        default = self.default_strategies.get(key, "contains")
-
+        default = "contains"
+        
         if isinstance(value, str) and "*" in value:
             return "wildcard"
 
