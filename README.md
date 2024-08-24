@@ -1,3 +1,6 @@
+[![version](https://badge.fury.io/py/jamesql.svg)](https://badge.fury.io/py/jamesql)
+[![license](https://img.shields.io/pypi/l/jamesql)](https://github.com/capjamesg/knowledge-graph-language/blob/main/LICENSE.md)
+[![python-version](https://img.shields.io/pypi/pyversions/jamesql)](https://badge.fury.io/py/jamesql)
 [![test workflow](https://github.com/capjamesg/jamesql/actions/workflows/test.yml/badge.svg)](https://github.com/capjamesg/jamesql/actions/workflows/test.yml)
 
 # JameSQL
