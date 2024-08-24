@@ -30,12 +30,12 @@ OPERATOR_MAP = {
 
 class QueryRewriter(Transformer):
     def __init__(self, default_strategies=None, query_keys=None):
-        self.default_strategies = default_strategies
+        self.indexing_strategies = default_strategies
         self.query_keys = query_keys
 
     def get_query_strategy(self, key="", value=""):
         default = "contains"
-        
+
         if isinstance(value, str) and "*" in value:
             return "wildcard"
 
@@ -71,6 +71,7 @@ class QueryRewriter(Transformer):
                     "strict": True,
                 }
                 for field in self.query_keys
+                if self.indexing_strategies.get(field) != "NUMERIC"
             }
         }
 
@@ -106,6 +107,9 @@ class QueryRewriter(Transformer):
         for key in self.query_keys:
             field = key
             value = items[0]
+
+            if self.indexing_strategies.get(field) == "NUMERIC":
+                continue
 
             result.append({field: {self.get_query_strategy(field, value): value}})
 
