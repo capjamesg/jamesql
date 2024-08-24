@@ -763,11 +763,7 @@ class JameSQL:
                         for doc_uuid in gsi.values(min=lower_bound, max=upper_bound)
                     ]
                 )
-            elif query_type in QUERY_TYPE_COMPARISON_METHODS and gsi_type == GSI_INDEX_STRATEGIES.NUMERIC:
-                matching_documents.extend(
-                    QUERY_TYPE_COMPARISON_METHODS[query_type](query_term, gsi)
-                )
-            elif query_type in QUERY_TYPE_COMPARISON_METHODS and gsi_type == GSI_INDEX_STRATEGIES.DATE:
+            elif query_type in QUERY_TYPE_COMPARISON_METHODS and gsi_type in {GSI_INDEX_STRATEGIES.DATE, GSI_INDEX_STRATEGIES.NUMERIC}:
                 result = QUERY_TYPE_COMPARISON_METHODS[query_type](query_term, gsi)
                 if isinstance(result[0], list):
                     for item in result:
