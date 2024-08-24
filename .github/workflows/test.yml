@@ -30,6 +30,5 @@ jobs:
 
       - name: 🧪 Test
         run: |
-          python -m pytest ./tests/test.py
-          python -m pytest ./tests/script_lang.py
+          python -m pytest ./tests/*.py
 
