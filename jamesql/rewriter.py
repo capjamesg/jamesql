@@ -13,7 +13,7 @@ word_query: WORD
 field_query: TERM ":" "'" MULTI_WORD "'" | TERM ":" WORD
 negate_query: "-" "'" MULTI_WORD "'" | "-" WORD
 OPERATOR: ">" | "<" | ">=" | "<="
-WORD: /[a-zA-Z0-9_.!?*]+/
+WORD: /[a-zA-Z0-9_.!?*-]+/
 MULTI_WORD: /[a-zA-Z0-9 ]+/
 TERM: /[a-zA-Z0-9_]+/
 
@@ -48,7 +48,7 @@ class QueryRewriter(Transformer):
             field = key
             value = items[0]
 
-            if self.indexing_strategies.get(field) == "NUMERIC":
+            if self.indexing_strategies.get(field) in {"NUMERIC", "DATE"}:
                 continue
 
             result.append({field: {self.get_query_strategy(field, value): value}})
@@ -74,7 +74,7 @@ class QueryRewriter(Transformer):
                     "strict": True,
                 }
                 for field in self.query_keys
-                if self.indexing_strategies.get(field) != "NUMERIC"
+                if self.indexing_strategies.get(field) not in {"NUMERIC", "DATE"}
             }
         }
 

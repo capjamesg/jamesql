@@ -39,6 +39,7 @@ class GSI_INDEX_STRATEGIES(Enum):
     FLAT = "flat"
     NUMERIC = "numeric"
     INFER = "infer"
+    DATE = "date"
 
 
 class RANKING_STRATEGIES(Enum):
@@ -323,6 +324,7 @@ class JameSQL:
         """
 
         documents_in_indexed_by = [item.get(index_by) for item in self.global_index.values()]
+        
         if strategy == GSI_INDEX_STRATEGIES.INFER:
             if all([isinstance(item, list) for item in documents_in_indexed_by]):
                 strategy = GSI_INDEX_STRATEGIES.FLAT
@@ -354,10 +356,18 @@ class JameSQL:
                         gsi[inner].append(item.get("uuid"))
                 else:
                     gsi[item.get(index_by)].append(item.get("uuid"))
-        elif strategy == GSI_INDEX_STRATEGIES.NUMERIC:
+        elif strategy == GSI_INDEX_STRATEGIES.NUMERIC or strategy == GSI_INDEX_STRATEGIES.DATE:
             gsi = OOBTree()
 
-            gsi.update({item.get(index_by): item.get("uuid") for item in self.global_index.values()})
+            for item in self.global_index.values():
+                if gsi.get(item.get(index_by)) is None:
+                    gsi[item.get(index_by)] = []
+
+                if isinstance(item.get(index_by), list):
+                    for inner in item.get(index_by):
+                        gsi[inner].append(item.get("uuid"))
+
+                gsi[item.get(index_by)].append(item.get("uuid"))
         else:
             raise ValueError(
                 "Invalid GSI strategy. Must be one of: "
@@ -621,7 +631,7 @@ class JameSQL:
             query_terms = [query_term.replace("*", c) for c in string.ascii_lowercase]
         
         for query_term in query_terms:
-            if gsi_type not in (GSI_INDEX_STRATEGIES.FLAT, GSI_INDEX_STRATEGIES.NUMERIC):
+            if gsi_type not in (GSI_INDEX_STRATEGIES.FLAT, GSI_INDEX_STRATEGIES.NUMERIC, GSI_INDEX_STRATEGIES.DATE):
                 if (
                     query_type == "starts_with"
                     and gsi_type == GSI_INDEX_STRATEGIES.PREFIX
@@ -755,7 +765,7 @@ class JameSQL:
                 )
             elif query_type in QUERY_TYPE_COMPARISON_METHODS:
                 matching_documents.extend(
-                    QUERY_TYPE_COMPARISON_METHODS[query_type](query_term, gsi)
+                    *QUERY_TYPE_COMPARISON_METHODS[query_type](query_term, gsi)
                 )
             else:
                 for key, value in gsi.items():
