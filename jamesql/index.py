@@ -327,9 +327,9 @@ class JameSQL:
 
         documents_in_indexed_by = [item.get(index_by) for item in self.global_index.values()]
         if strategy == GSI_INDEX_STRATEGIES.INFER:
-            if isinstance(index_by, list):
+            if all([isinstance(item, list) for item in documents_in_indexed_by]):
                 strategy = GSI_INDEX_STRATEGIES.FLAT
-            elif all([isinstance(item, int) or item.isdigit() for item in documents_in_indexed_by]):
+            elif all([isinstance(item, int) or (isinstance(item, str) and item.isdigit()) for item in documents_in_indexed_by]):
                 strategy = GSI_INDEX_STRATEGIES.NUMERIC
             # if word count < 10, use prefix
             # elif isinstance(index_by, str) and sum([len(item.split(" ")) for item in documents_in_indexed_by]) / len(documents_in_indexed_by) < 10:
