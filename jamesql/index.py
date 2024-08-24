@@ -40,6 +40,7 @@ class GSI_INDEX_STRATEGIES(Enum):
     NUMERIC = "numeric"
     INFER = "infer"
     DATE = "date"
+    NOT_INDEXABLE = "not_indexable"
 
 
 class RANKING_STRATEGIES(Enum):
@@ -369,11 +370,18 @@ class JameSQL:
                 strategy = GSI_INDEX_STRATEGIES.FLAT
             elif all([isinstance(item, int) or (isinstance(item, str) and item.isdigit()) for item in documents_in_indexed_by]):
                 strategy = GSI_INDEX_STRATEGIES.NUMERIC
+            elif all([isinstance(item, float) for item in documents_in_indexed_by]):
+                strategy = GSI_INDEX_STRATEGIES.NUMERIC
+            elif all([isinstance(item, str) and len(item.split("-")) == 3 for item in documents_in_indexed_by]):
+                strategy = GSI_INDEX_STRATEGIES.DATE
             # if word count < 10, use prefix
             # elif isinstance(index_by, str) and sum([len(item.split(" ")) for item in documents_in_indexed_by]) / len(documents_in_indexed_by) < 10:
             #     strategy = GSI_INDEX_STRATEGIES.PREFIX
-            elif isinstance(index_by, str) and sum([len(item.split(" ")) for item in documents_in_indexed_by]) / len(documents_in_indexed_by) > 20:
+            # if dictionary, use contains
+            elif isinstance(index_by, str) and sum([len(item.split(" ")) for item in documents_in_indexed_by if item and not isinstance(item, dict)]) / len(documents_in_indexed_by) > 20:
                 strategy = GSI_INDEX_STRATEGIES.CONTAINS
+            elif all([isinstance(item, dict) for item in documents_in_indexed_by]):
+                strategy = GSI_INDEX_STRATEGIES.NOT_INDEXABLE
             else:
                 strategy = GSI_INDEX_STRATEGIES.FLAT
 
@@ -407,6 +415,8 @@ class JameSQL:
                         gsi[inner].append(item.get("uuid"))
 
                 gsi[item.get(index_by)].append(item.get("uuid"))
+        elif strategy == GSI_INDEX_STRATEGIES.NOT_INDEXABLE:
+            gsi = {}
         else:
             raise ValueError(
                 "Invalid GSI strategy. Must be one of: "
@@ -675,6 +685,9 @@ class JameSQL:
         if query_type == "wildcard":
             # replace * with every possible character
             query_terms = [query_term.replace("*", c) for c in string.ascii_lowercase]
+
+            if gsi_type == GSI_INDEX_STRATEGIES.CONTAINS:
+                query_terms = [term for term in query_terms if term in gsi]
         
         for query_term in query_terms:
             if gsi_type not in (GSI_INDEX_STRATEGIES.FLAT, GSI_INDEX_STRATEGIES.NUMERIC, GSI_INDEX_STRATEGIES.DATE):

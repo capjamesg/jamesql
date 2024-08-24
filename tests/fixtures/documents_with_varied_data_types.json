@@ -1,0 +1,11 @@
+[
+    {"title": "tolerate it", "lyric": "I made you my temple, my mural, my sky", "listens": 100, "album_in_stock": true, "rating": 4.7, "metadata": {"version": 0}, "record_last_updated": "2023-01-01"},
+    {
+        "title": "my tears ricochet",
+        "lyric": "And I still talk to you when I'm screaming at the sky",
+        "listens": 200,
+        "album_in_stock": true,
+        "rating": 4.7, "metadata": {"version": 0}, "record_last_updated": "2024-01-01"
+    },
+    {"title": "The Bolter", "lyric": "Started with a kiss", "listens": 300, "album_in_stock": false, "rating": 4.9, "metadata": {"version": 0}, "record_last_updated": "2024-04-01"}
+]
