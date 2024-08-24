@@ -768,9 +768,13 @@ class JameSQL:
                     QUERY_TYPE_COMPARISON_METHODS[query_type](query_term, gsi)
                 )
             elif query_type in QUERY_TYPE_COMPARISON_METHODS and gsi_type == GSI_INDEX_STRATEGIES.DATE:
-                matching_documents.extend(
-                    *QUERY_TYPE_COMPARISON_METHODS[query_type](query_term, gsi)
-                )
+                result = QUERY_TYPE_COMPARISON_METHODS[query_type](query_term, gsi)
+                if isinstance(result[0], list):
+                    for item in result:
+                        matching_documents.extend(item)
+                else:
+                    matching_documents.extend(result)
+                
             else:
                 for key, value in gsi.items():
                     if query_term is None or key is None:
