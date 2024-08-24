@@ -11,6 +11,7 @@ import orjson
 import pybmoore
 import pygtrie
 from lark import Lark
+from BTrees.OOBTree import OOBTree
 
 from jamesql.rewriter import string_query_to_jamesql
 
@@ -25,7 +26,7 @@ KEYW0RDS = ["and", "or", "not"]
 
 METHODS = {"and": set.intersection, "or": set.union, "not": set.difference}
 
-RESERVED_QUERY_TERMS = ["strict"]
+RESERVED_QUERY_TERMS = ["strict", "boost", "highlight", "highlight_stride"]
 
 # this is the maximum number of individual sub-queries
 # that can be run in a single query
@@ -36,6 +37,8 @@ class GSI_INDEX_STRATEGIES(Enum):
     PREFIX = "prefix"
     CONTAINS = "contains"
     FLAT = "flat"
+    NUMERIC = "numeric"
+    INFER = "infer"
 
 
 class RANKING_STRATEGIES(Enum):
@@ -44,6 +47,20 @@ class RANKING_STRATEGIES(Enum):
 
 JAMESQL_SCRIPT_SCORE_PARSER = Lark(grammar)
 
+QUERY_TYPE_COMPARISON_METHODS = {
+    "greater_than": lambda query_term, gsi: [
+        doc_uuid for doc_uuid in gsi.values(min=query_term, excludemin=True)
+    ],
+    "less_than": lambda query_term, gsi: [
+        doc_uuid for doc_uuid in gsi.values(max=query_term, excludemax=True)
+    ],
+    "greater_than_or_equal": lambda query_term, gsi: [
+        doc_uuid for doc_uuid in gsi.values(min=query_term)
+    ],
+    "less_than_or_equal": lambda query_term, gsi: [
+        doc_uuid for doc_uuid in gsi.values(max=query_term)
+    ]
+}
 
 class JameSQL:
     SELF_METHODS = {"close_to": "_close_to"}
@@ -77,7 +94,7 @@ class JameSQL:
             )
 
             if not self.gsis.get(field):
-                self.create_gsi(field, GSI_INDEX_STRATEGIES.CONTAINS)
+                self.create_gsi(field, GSI_INDEX_STRATEGIES.INFER)
 
             gsi = self.gsis[field]
             gsi_index = gsi["gsi"]
@@ -203,6 +220,33 @@ class JameSQL:
         query = self._compute_string_query(query, query_keys)
 
         return self.search(query)
+    
+    def _get_unique_record_count(self, documents: list) -> int:
+        """
+        Accepts a GSI name and returns the number of unique record values in the GSI.
+
+        Uniqueness is enforced by the fact that GSIs are dictionaries.
+        """
+        
+        counts = {}
+
+        for document in documents:
+            for key, value in document.items():
+                if key not in counts:
+                    counts[key] = set()
+
+                if key.startswith("_"):
+                    continue
+
+                if isinstance(value, list):
+                    for item in value:
+                        counts[key].add(item)
+                else:
+                    counts[key].add(value)
+
+        counts = {key: len(value) for key, value in counts.items() if not key.startswith("_") and key != "uuid"}
+                
+        return counts
 
     def add(self, document: list, doc_id=None) -> Dict[str, dict]:
         """
@@ -249,7 +293,7 @@ class JameSQL:
     def create_gsi(
         self,
         index_by: str | List[str],
-        strategy: GSI_INDEX_STRATEGIES = "flat",
+        strategy: GSI_INDEX_STRATEGIES = "infer",
         prefix_limit=20,
     ) -> Dict[str, dict]:
         """
@@ -281,6 +325,20 @@ class JameSQL:
         - Flat
         """
 
+        documents_in_indexed_by = [item.get(index_by) for item in self.global_index.values()]
+        if strategy == GSI_INDEX_STRATEGIES.INFER:
+            if isinstance(index_by, list):
+                strategy = GSI_INDEX_STRATEGIES.FLAT
+            elif all([isinstance(item, int) or item.isdigit() for item in documents_in_indexed_by]):
+                strategy = GSI_INDEX_STRATEGIES.NUMERIC
+            # if word count < 10, use prefix
+            # elif isinstance(index_by, str) and sum([len(item.split(" ")) for item in documents_in_indexed_by]) / len(documents_in_indexed_by) < 10:
+            #     strategy = GSI_INDEX_STRATEGIES.PREFIX
+            elif isinstance(index_by, str) and sum([len(item.split(" ")) for item in documents_in_indexed_by]) / len(documents_in_indexed_by) > 20:
+                strategy = GSI_INDEX_STRATEGIES.CONTAINS
+            else:
+                strategy = GSI_INDEX_STRATEGIES.FLAT
+
         if strategy == GSI_INDEX_STRATEGIES.PREFIX:
             gsi = pygtrie.CharTrie()
 
@@ -294,7 +352,15 @@ class JameSQL:
             gsi = defaultdict(list)
 
             for item in self.global_index.values():
-                gsi[item.get(index_by)].append(item.get("uuid"))
+                if isinstance(item.get(index_by), list):
+                    for inner in item.get(index_by):
+                        gsi[inner].append(item.get("uuid"))
+                else:
+                    gsi[item.get(index_by)].append(item.get("uuid"))
+        elif strategy == GSI_INDEX_STRATEGIES.NUMERIC:
+            gsi = OOBTree()
+
+            gsi.update({item.get(index_by): item.get("uuid") for item in self.global_index.values()})
         else:
             raise ValueError(
                 "Invalid GSI strategy. Must be one of: "
@@ -383,11 +449,28 @@ class JameSQL:
         if results_limit == 0:
             results = []
 
-        return {
+        result = {
             "documents": results,
             "query_time": str(round(end_time - start_time, 4)),
             "total_results": total_results,
         }
+
+        if query.get("metrics") and "aggregate" in query["metrics"]:
+            result["metrics"] = {
+                "unique_record_values": self._get_unique_record_count(results),
+            }
+
+        if query.get("group_by"):
+            result["groups"] = defaultdict(list)
+
+            for doc in results:
+                if isinstance(doc.get(query["group_by"]), list):
+                    for item in doc.get(query["group_by"]):
+                        result["groups"][item].append(doc)
+                else:
+                    result["groups"][doc.get(query["group_by"])].append(doc)
+
+        return result
 
     def _get_query_conditions(self, query_tree):
         first_key = list(query_tree.keys())[0]
@@ -488,14 +571,17 @@ class JameSQL:
 
         matching_documents = []
         matching_document_scores = {}
+        matching_highlights = {}
 
-        query_type = list(query["query"][query_field].keys())[0]
+        query_type = list([key for key in query["query"][query_field].keys() if key not in RESERVED_QUERY_TERMS])[0]
         query_term = query["query"][query_field][query_type]
 
         enforce_strict = query["query"][query_field].get("strict", False)
+        highlight_terms = query["query"][query_field].get("highlight", False)
+        highlight_stride = query["query"][query_field].get("highlight_stride", 10)
 
         if not self.gsis.get(query_field):
-            self.create_gsi(query_field, GSI_INDEX_STRATEGIES.FLAT)
+            self.create_gsi(query_field, GSI_INDEX_STRATEGIES.INFER)
 
         gsi_type = GSI_INDEX_STRATEGIES[self.gsis[query_field]["strategy"]]
 
@@ -529,32 +615,41 @@ class JameSQL:
                 [query_term[:i] + query_term[i + 1 :] for i in range(len(query_term))]
             )
 
+        # remove query terms whose words are not in index
+        if gsi_type == GSI_INDEX_STRATEGIES.CONTAINS:
+            query_terms = [term for term in query_terms if term in gsi]
+
         if query_type == "wildcard":
             # replace * with every possible character
             query_terms = [query_term.replace("*", c) for c in string.ascii_lowercase]
-
+        
         for query_term in query_terms:
-            if gsi_type != GSI_INDEX_STRATEGIES.FLAT:
+            if gsi_type not in (GSI_INDEX_STRATEGIES.FLAT, GSI_INDEX_STRATEGIES.NUMERIC):
                 if (
                     query_type == "starts_with"
                     and gsi_type == GSI_INDEX_STRATEGIES.PREFIX
                 ):
                     matches = gsi.keys(prefix=query_term)
                     matching_documents.extend([gsi[match] for match in matches])
+                    
 
                 if (
                     query_type in {"contains", "wildcard"}
                     and gsi_type == GSI_INDEX_STRATEGIES.CONTAINS
                 ):
-                    if enforce_strict and len(query_term.split()) > 1:
+                    if enforce_strict:
                         words = query_term.split()
 
                         all_matches = {}
                         all_match_positions = {}
 
-                        for word_index in range(0, len(words) - 1):
+                        for word_index in range(0, len(words)):
                             current_word = words[word_index]
-                            next_word = words[word_index + 1]
+                            if word_index + 1 == len(words):
+                                next_word = current_word
+                            else:
+                                next_word = words[word_index + 1]
+                                
                             current_word_positions = (
                                 gsi.get(current_word, {})
                                 .get("documents", {})
@@ -577,17 +672,21 @@ class JameSQL:
                                     if (
                                         position + len(current_word) + 1
                                         in next_word_positions[doc_id]
-                                    ):
+                                    ) or len(words) == 1:
                                         matches_for_this_word.append(doc_id)
                                         match_positions[doc_id].append(position)
                                         break
 
-                            all_matches[current_word + " " + next_word] = (
-                                matches_for_this_word
-                            )
-                            all_match_positions[current_word + " " + next_word] = (
-                                match_positions
-                            )
+                            if word_index + 1 == len(words) and len(words) == 1:
+                                all_matches[current_word] = matches_for_this_word
+                                all_match_positions[current_word] = match_positions
+                            else:
+                                all_matches[current_word + " " + next_word] = (
+                                    matches_for_this_word
+                                )
+                                all_match_positions[current_word + " " + next_word] = (
+                                    match_positions
+                                )
 
                         if all_matches:
                             matching_documents = list(
@@ -602,8 +701,21 @@ class JameSQL:
                                     for doc_id in matching_documents
                                 }
                             )
+                            if highlight_terms:
+                                matches_with_context = defaultdict(list)
+
+                                for doc_occurrences in all_match_positions.values():
+                                    for doc_id, positions in doc_occurrences.items():
+                                        for position in positions:
+                                            start = max(0, position - highlight_stride)
+                                            end = min(position + highlight_stride, len(self.global_index[doc_id]["lyric"].split()))
+                                            matches_with_context[doc_id].append(
+                                                " ".join(self.global_index[doc_id]["lyric"].split()[start:end])
+                                            )
+                                
+                                matching_highlights.update(matches_with_context)
                     else:
-                        for word in query_term.split():
+                        for word in query_term.split(" "):
                             if gsi.get(word) is None:
                                 continue
 
@@ -626,8 +738,28 @@ class JameSQL:
                             .get("uuid", [])
                         ]
                     )
+                if query_type == "contains" and gsi_type == GSI_INDEX_STRATEGIES.PREFIX:
+                    matching_documents.extend(
+                        [
+                            doc_uuid
+                            for key, doc_uuid in gsi.items()
+                            if pybmoore.search(query_term, key)
+                        ]
+                    )
             elif query_type == "equals":
                 matching_documents.extend(gsi.get(query_term, []))
+            elif query_type == "range":
+                lower_bound, upper_bound = query_term
+                matching_documents.extend(
+                    [
+                        doc_uuid
+                        for doc_uuid in gsi.values(min=lower_bound, max=upper_bound)
+                    ]
+                )
+            elif query_type in QUERY_TYPE_COMPARISON_METHODS:
+                matching_documents.extend(
+                    QUERY_TYPE_COMPARISON_METHODS[query_type](query_term, gsi)
+                )
             else:
                 for key, value in gsi.items():
                     if query_term is None or key is None:
@@ -652,5 +784,6 @@ class JameSQL:
         # assign doc ranks
         for i, doc in enumerate(response):
             doc["_score"] = matching_document_scores.get(doc["uuid"], 1) * boost_factor
+            doc["_context"] = matching_highlights.get(doc["uuid"], {})
 
         return response

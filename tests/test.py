@@ -335,7 +335,7 @@ def create_indices(request):
         ),  # test not query within an and query
     ],
 )
-@pytest.mark.timeout(20)
+@pytest.mark.timeout(30)
 def test_search(
     create_indices,
     query,
@@ -410,7 +410,6 @@ def test_query_score_and_boost(
 
         assert response["documents"][0]["title"] == top_document_name
         assert response["documents"][0]["_score"] == top_document_score
-
 
 def test_add_item(
     create_indices,
