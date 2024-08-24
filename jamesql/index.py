@@ -268,6 +268,45 @@ class JameSQL:
             len(self.global_index) - 1
         )
 
+        # add to GSI
+        for key, value in document.items():
+            if key in self.gsis:
+                if self.gsis[key]["strategy"] == GSI_INDEX_STRATEGIES.CONTAINS.name:
+                    if not self.gsis[key]["gsi"].get(value):
+                        self.gsis[key]["gsi"][value] = {"documents": {"uuid": defaultdict(list), "count": defaultdict(int)}}
+
+                    self.gsis[key]["gsi"][value]["documents"]["uuid"][document["uuid"]].append(0)
+                    self.gsis[key]["gsi"][value]["documents"]["count"][document["uuid"]] += 1
+                elif self.gsis[key]["strategy"] == GSI_INDEX_STRATEGIES.PREFIX.name:
+                    if not self.gsis[key]["gsi"].get(value[:20]):
+                        self.gsis[key]["gsi"][value[:20]] = {"documents": {"uuid": defaultdict(list), "count": defaultdict(int)}}
+
+                    self.gsis[key]["gsi"][value[:20]]["documents"]["uuid"][document["uuid"]].append(0)
+                    self.gsis[key]["gsi"][value[:20]]["documents"]["count"][document["uuid"]] += 1
+                elif self.gsis[key]["strategy"] == GSI_INDEX_STRATEGIES.FLAT.name:
+                    if isinstance(value, list):
+                        for inner in value:
+                            if not self.gsis[key]["gsi"].get(inner):
+                                self.gsis[key]["gsi"][inner] = []
+
+                            self.gsis[key]["gsi"][inner].append(document["uuid"])
+                    else:
+                        if not self.gsis[key]["gsi"].get(value):
+                            self.gsis[key]["gsi"][value] = []
+
+                        self.gsis[key]["gsi"][value].append(document["uuid"])
+                elif self.gsis[key]["strategy"] == GSI_INDEX_STRATEGIES.NUMERIC.name or self.gsis[key]["strategy"] == GSI_INDEX_STRATEGIES.DATE.name:
+                    if not self.gsis[key]["gsi"].get(value):
+                        self.gsis[key]["gsi"][value] = []
+
+                    self.gsis[key]["gsi"][value].append(document["uuid"])
+                else:
+                    raise ValueError(
+                        "Invalid GSI strategy. Must be one of: "
+                        + ", ".join([strategy.name for strategy in GSI_INDEX_STRATEGIES])
+                        + "."
+                    )
+
     def update(self, uuid: str, document: dict) -> Dict[str, dict]:
         """
         Accepts a UUID and a Tdocument and updates the document associated with that key.
@@ -562,6 +601,32 @@ class JameSQL:
                 acc = set.union(acc, set([doc.get("uuid") for doc in results]))
 
         return [self.global_index.get(doc_id) for doc_id in acc]
+    
+    def _turn_query_into_fuzzy_options(self, query_term: dict) -> dict:
+        query_terms = []
+
+        # create versions of query where a letter is replaced in every possible position
+        query_terms.extend(
+            [
+                query_term[:i] + c + query_term[i + 1 :]
+                for i in range(len(query_term))
+                for c in string.ascii_lowercase
+            ]
+        )
+        # create versions of query where a letter is added in every possible position
+        query_terms.extend(
+            [
+                query_term[:i] + c + query_term[i:]
+                for i in range(len(query_term))
+                for c in string.ascii_lowercase
+            ]
+        )
+        # remove a letter from every possible position
+        query_terms.extend(
+            [query_term[:i] + query_term[i + 1 :] for i in range(len(query_term))]
+        )
+
+        return query_terms
 
     def _run(self, query: dict, query_field: str) -> List[str]:
         """
@@ -601,26 +666,7 @@ class JameSQL:
         query_terms = [query_term]
 
         if fuzzy:
-            # create versions of query where a letter is replaced in every possible position
-            query_terms.extend(
-                [
-                    query_term[:i] + c + query_term[i + 1 :]
-                    for i in range(len(query_term))
-                    for c in string.ascii_lowercase
-                ]
-            )
-            # create versions of query where a letter is added in every possible position
-            query_terms.extend(
-                [
-                    query_term[:i] + c + query_term[i:]
-                    for i in range(len(query_term))
-                    for c in string.ascii_lowercase
-                ]
-            )
-            # remove a letter from every possible position
-            query_terms.extend(
-                [query_term[:i] + query_term[i + 1 :] for i in range(len(query_term))]
-            )
+            query_terms = self._turn_query_into_fuzzy_options(query_term)
 
         # remove query terms whose words are not in index
         if gsi_type == GSI_INDEX_STRATEGIES.CONTAINS:
@@ -736,7 +782,7 @@ class JameSQL:
                                 matching_document_scores.update(
                                     {uuid_of_document: count}
                                 )
-                if query_type == "equals":
+                elif query_type == "equals":
                     matching_documents.extend(
                         [
                             doc_uuid
@@ -745,7 +791,7 @@ class JameSQL:
                             .get("uuid", [])
                         ]
                     )
-                if query_type == "contains" and gsi_type == GSI_INDEX_STRATEGIES.PREFIX:
+                elif query_type == "contains" and gsi_type == GSI_INDEX_STRATEGIES.PREFIX:
                     matching_documents.extend(
                         [
                             doc_uuid
@@ -757,12 +803,9 @@ class JameSQL:
                 matching_documents.extend(gsi.get(query_term, []))
             elif query_type == "range":
                 lower_bound, upper_bound = query_term
-                matching_documents.extend(
-                    [
-                        doc_uuid
-                        for doc_uuid in gsi.values(min=lower_bound, max=upper_bound)
-                    ]
-                )
+                results = gsi.values(min=lower_bound, max=upper_bound)
+                for result in results:
+                    matching_documents.extend(result)
             elif query_type in QUERY_TYPE_COMPARISON_METHODS and gsi_type in {GSI_INDEX_STRATEGIES.DATE, GSI_INDEX_STRATEGIES.NUMERIC}:
                 result = QUERY_TYPE_COMPARISON_METHODS[query_type](query_term, gsi)
                 if isinstance(result[0], list):

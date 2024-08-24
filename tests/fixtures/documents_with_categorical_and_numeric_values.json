@@ -1,0 +1,10 @@
+[
+    {"title": "tolerate it", "lyric": "I made you my temple, my mural, my sky", "listens": 100, "category": ["pop"] },
+    {
+        "title": "my tears ricochet",
+        "lyric": "And I still talk to you when I'm screaming at the sky",
+        "listens": 200,
+        "category": ["pop", "acoustic"]
+    },
+    {"title": "The Bolter", "lyric": "Started with a kiss", "listens": 300, "category": ["acoustic"]}
+]
