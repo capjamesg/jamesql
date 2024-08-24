@@ -4,13 +4,16 @@ import re
 grammar = """
 start: query
 
-query: (negate_query | strict_search_query | word_query | field_query)*
+query: (range_query | negate_query | strict_search_query | word_query | field_query | comparison)+
 
 strict_search_query: "'" MULTI_WORD "'"
+comparison: TERM OPERATOR WORD
+range_query: TERM "[" WORD "," WORD "]"
 word_query: WORD
 field_query: TERM ":" "'" MULTI_WORD "'" | TERM ":" WORD
 negate_query: "-" "'" MULTI_WORD "'" | "-" WORD
-WORD: /[a-zA-Z0-9_.,!?*]+/
+OPERATOR: ">" | "<" | ">=" | "<="
+WORD: /[a-zA-Z0-9_.!?*]+/
 MULTI_WORD: /[a-zA-Z0-9 ]+/
 TERM: /[a-zA-Z0-9_]+/
 
@@ -18,6 +21,12 @@ TERM: /[a-zA-Z0-9_]+/
 %ignore WS
 """
 
+OPERATOR_MAP = {
+    ">": "greater_than",
+    "<": "less_than",
+    ">=": "greater_than_or_equal",
+    "<=": "less_than_or_equal",
+}
 
 class QueryRewriter(Transformer):
     def __init__(self, default_strategies=None, query_keys=None):
@@ -27,7 +36,7 @@ class QueryRewriter(Transformer):
     def get_query_strategy(self, key="", value=""):
         default = self.default_strategies.get(key, "contains")
 
-        if "*" in value:
+        if isinstance(value, str) and "*" in value:
             return "wildcard"
 
         return default
@@ -50,6 +59,9 @@ class QueryRewriter(Transformer):
         items = {k: v for item in items for k, v in item.items()}
 
         return {"query": items, "limit": 10}
+    
+    def OPERATOR(self, items):
+        return items.value
 
     def strict_search_query(self, items):
         return {
@@ -67,6 +79,26 @@ class QueryRewriter(Transformer):
 
     def MULTI_WORD(self, items):
         return items.value
+    
+    def comparison(self, items):
+        field = items[0]
+        operator = items[1]
+        value = items[2]
+
+        if field not in self.query_keys:
+            return {}
+
+        return {field: {OPERATOR_MAP[operator]: value}}
+    
+    def range_query(self, items):
+        field = items[0]
+        start = items[1]
+        end = items[2]
+
+        if field not in self.query_keys:
+            return {}
+
+        return {field: {"range": [start, end]}}
 
     def word_query(self, items):
         result = []
@@ -89,6 +121,9 @@ class QueryRewriter(Transformer):
         return {field: {self.get_query_strategy(field, value): value}}
 
     def WORD(self, items):
+        if items.value.isdigit():
+            return int(items.value)
+        
         return items.value
 
 
@@ -97,7 +132,7 @@ def string_query_to_jamesql(query, query_keys, default_strategies={}):
         return {"query": {}}
     
     # remove punctuation not in grammar
-    query = re.sub(r"[^a-zA-Z0-9_.,!?*:\-' ]", "", query)
+    query = re.sub(r"[^a-zA-Z0-9_.,!?*:\-'<>=\[\] ]", "", query)
     
     tree = Lark(grammar).parse(query)
 
