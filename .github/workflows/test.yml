@@ -27,10 +27,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .
           pip install -e .[dev]
-
       - name: 🧪 Test
         run: |
-          if [ "$(uname -s)" = "Linux" ] || [ "$(uname -s)" = "Darwin" ]; then
-            python -m pytest $(find ./tests -name "*.py")
-          else
-            for %file in (tests\*.py) do python -m pytest %file
+          python -m pytest tests/
