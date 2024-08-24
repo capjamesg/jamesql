@@ -29,4 +29,4 @@ jobs:
           pip install -e .[dev]
       - name: 🧪 Test
         run: |
-          python -m pytest tests
+          python -m pytest tests\*
