@@ -48,7 +48,35 @@ index.add({"title": "tolerate it", "artist": "Taylor Swift"})
 index.insert({"title": "betty", "artist": "Taylor Swift"})
 ```
 
+Values within documents can have the following data types:
+
+- String
+- Integer
+- Float
+- List
+
+You cannot currently index a document whose value is a dictionary.
+
 When documents are added, a `uuid` key is added for use in uniquely identifying the document.
+
+### Indexing strategies
+
+When you run a query on a field for the first time, JameSQL will automatically set up an index for the field. The index type will be chosen based on what is most likely to be effective at querying the type of data in the field.
+
+There are four indexing strategies currently implemented:
+
+- `GSI_INDEX_STRATEGIES.CONTAINS`: Creates a reverse index for the field. This is useful for fields that contain longer strings (i.e. body text in a blog post).
+- `GSI_INDEX_STRATEGIES.NUMERIC`: Creates several buckets to allow for efficient search of numeric values, especially values with high cardinality.
+- `GSI_INDEX_STRATEGIES.FLAT`: Stores the field as the data type it is. A flat index is created of values that are not strings or numbers. This is the default. For example, if you are indexing document titles and don't need to do a `starts_with` query, you may choose a flat index to allow for efficient `equals` and `contains` queries.
+- `GSI_INDEX_STRATEGIES.PREFIX`: Creates a trie index for the field. This is useful for fields that contain short strings (i.e. titles).
+
+You can manually set an index type by creating a index (called a GSI), like so:
+
+```python
+index.create_gsi("title", strategy=GSI_INDEX_STRATEGIES.PREFIX)
+```
+
+If you manually set an indexing startegy, any document currently in or added to the database will be indexed according to the strategy provided.
 
 ### Search for documents
 
@@ -385,6 +413,111 @@ query = {
         "distance": 7
     },
     "limit": 10
+}
+```
+
+### Less than, greater than, less than or equal to, greater than or equal to
+
+You can find documents where a field is less than, greater than, less than or equal to, or greater than or equal to a value with a range query. Here is an example of a query that looks for documents where the `year` field is greater than `2010`:
+
+```python
+query = {
+    "query": {
+        "year": {
+            "greater_than": 2010
+        }
+    }
+}
+```
+
+The following operators are supported:
+
+- `greater_than`
+- `less_than`
+- `greater_than_or_equal`
+- `less_than_or_equal`
+
+### Range queries
+
+You can find values in a numeric range with a range query. Here is an example of a query that looks for documents where the `year` field is between `2010` and `2020`:
+
+```python
+query = {
+    "query": {
+        "year": {
+            "range": [2010, 2020]
+        }
+    }
+}
+```
+
+The first value in the range is the lower bound to use in the search, and the second value is the upper bound.
+
+### Highlight results
+
+You can extract context around results. This data can be used to show a snippet of the document that contains the query term.
+
+Here is an example of a query that highlights context around all instances of the term "sky" in the `lyric` field:
+
+```python
+query = {
+    "query": {
+        "lyric": {
+            "contains": "sky",
+            "highlight": True,
+            "highlight_stride": 3
+        }
+    }
+}
+```
+
+`highlight_stride` states how many words to retrieve before and after the match.
+
+All documents returned by this query will have a `_context` key that contains the context around all instances of the term "sky".
+
+### Group by
+
+You can group results by a single key. This is useful for presenting aggregate views of data.
+
+To group results by a key, use the following code:
+
+```python
+query = {
+    "query": {
+        "lyric": {
+            "contains": "sky"
+        }
+    },
+    "group_by": "title"
+}
+```
+
+This query will search for all `lyric` fields that contain the term "sky" and group the results by the `title` field.
+
+### Aggregate metrics
+
+You can find the total number of unique values for the fields returned by a query using an `aggregate` query. This is useful for presenting the total number of options available in a search space to a user.
+
+You can use the following query to find the total number of unique values for all fields whose `lyric` field contains the term "sky":
+
+```python
+query = {
+    "query": {
+        "lyric": {
+            "contains": "sky"
+        }
+    },
+    "metrics": ["aggregate"]
+}
+```
+
+The aggregate results are presented in an `unique_record_values` key with the following structure:
+
+```python
+{
+    "documents": [...],
+    "query_time": 0.0001,
+    {'unique_record_values': {'title': 2, 'lyric': 2, 'listens': 2, 'categories': 3}}
 }
 ```
 
