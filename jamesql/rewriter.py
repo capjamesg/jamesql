@@ -48,6 +48,9 @@ class QueryRewriter(Transformer):
             field = key
             value = items[0]
 
+            if self.indexing_strategies.get(field) == "NUMERIC":
+                continue
+
             result.append({field: {self.get_query_strategy(field, value): value}})
 
         return {"not": {"or": result}}
