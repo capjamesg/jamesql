@@ -10,9 +10,10 @@ strict_search_query: "'" MULTI_WORD "'"
 comparison: TERM OPERATOR WORD
 range_query: TERM "[" WORD "," WORD "]"
 word_query: WORD
-field_query: TERM ":" "'" MULTI_WORD "'" | TERM ":" WORD
+field_query: TERM ":" "'" MULTI_WORD "'" | TERM ":" WORD | TERM ":" DOUBLE_QUOTE MULTI_WORD DOUBLE_QUOTE
 negate_query: "-" "'" MULTI_WORD "'" | "-" WORD
 OPERATOR: ">" | "<" | ">=" | "<="
+DOUBLE_QUOTE: "\\""
 WORD: /[a-zA-Z0-9_.!?*-]+/
 MULTI_WORD: /[a-zA-Z0-9 ]+/
 TERM: /[a-zA-Z0-9_]+/
