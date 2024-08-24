@@ -30,5 +30,5 @@ jobs:
 
       - name: 🧪 Test
         run: |
-          python -m pytest ./tests/*.py
+          python -m pytest ./tests
 
