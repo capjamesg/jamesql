@@ -471,7 +471,7 @@ class JameSQL:
             results = sorted(results, key=lambda x: x.get("_score", 1), reverse=True)
 
         if query.get("skip"):
-            results = results[query["skip"] :]
+            results = results[int(query["skip"]) :]
 
         total_results = len(results)
 
