@@ -136,29 +136,14 @@ class JameSQL:
         Where `word` is every word in the document and `word_count` is the number of times it appears.
         """
 
-        index = defaultdict(dict)
+        index = defaultdict(lambda: {"count": 0, "documents": {"uuid": defaultdict(list), "count": defaultdict(int)}})
 
         for document in documents:
             for pos, word in enumerate(document[index_by].split()):
-                if not index.get(word):
-                    index[word] = {
-                        "count": 0,
-                        "documents": {
-                            "uuid": defaultdict(list),
-                            "count": defaultdict(int),
-                        },
-                    }
-
                 index[word]["count"] += 1
                 index[word]["documents"]["uuid"][document["uuid"]].append(pos)
                 index[word]["documents"]["count"][document["uuid"]] += 1
 
-            # allow equals lookup
-            if not index.get(document[index_by]):
-                index[document[index_by]] = {
-                    "count": 0,
-                    "documents": {"uuid": defaultdict(list), "count": defaultdict(int)},
-                }
             index[document[index_by]]["count"] += 1
             index[document[index_by]]["documents"]["uuid"][document["uuid"]].append(pos)
             index[document[index_by]]["documents"]["count"][document["uuid"]] += 1
@@ -211,12 +196,15 @@ class JameSQL:
 
         return query
 
-    def string_query_search(self, query: str, query_keys: list = []) -> List[str]:
+    def string_query_search(self, query: str, query_keys: list = [], start: int = 10) -> List[str]:
         """
         Accepts a string query and returns a list of matching documents.
         """
 
         query = self._compute_string_query(query, query_keys)
+
+        if start:
+            query["skip"] = start
 
         return self.search(query)
     
@@ -368,17 +356,17 @@ class JameSQL:
         if strategy == GSI_INDEX_STRATEGIES.INFER:
             if all([isinstance(item, list) for item in documents_in_indexed_by]):
                 strategy = GSI_INDEX_STRATEGIES.FLAT
-            elif all([isinstance(item, int) or (isinstance(item, str) and item.isdigit()) for item in documents_in_indexed_by]):
+            elif all([isinstance(item, int) or (isinstance(item, str) and item.isdigit()) for item in documents_in_indexed_by[:25]]):
                 strategy = GSI_INDEX_STRATEGIES.NUMERIC
             elif all([isinstance(item, float) for item in documents_in_indexed_by]):
                 strategy = GSI_INDEX_STRATEGIES.NUMERIC
-            elif all([isinstance(item, str) and len(item.split("-")) == 3 for item in documents_in_indexed_by]):
+            elif all([isinstance(item, str) and len(item.split("-")) == 3 for item in documents_in_indexed_by[:25]]):
                 strategy = GSI_INDEX_STRATEGIES.DATE
             # if word count < 10, use prefix
             # elif isinstance(index_by, str) and sum([len(item.split(" ")) for item in documents_in_indexed_by]) / len(documents_in_indexed_by) < 10:
             #     strategy = GSI_INDEX_STRATEGIES.PREFIX
             # if dictionary, use contains
-            elif isinstance(index_by, str) and sum([len(item.split(" ")) for item in documents_in_indexed_by if item and not isinstance(item, dict)]) / len(documents_in_indexed_by) > 20:
+            elif isinstance(index_by, str) and sum([len(item.split(" ")) for item in documents_in_indexed_by[:25] if item and not isinstance(item, dict)]) / len(documents_in_indexed_by) > 20:
                 strategy = GSI_INDEX_STRATEGIES.CONTAINS
             elif all([isinstance(item, dict) for item in documents_in_indexed_by]):
                 strategy = GSI_INDEX_STRATEGIES.NOT_INDEXABLE
@@ -458,19 +446,7 @@ class JameSQL:
 
             results = self._recursively_parse_query(query["query"])
 
-            if len(results) > 0 and isinstance(results[0], dict):
-                final_results = []
-
-                for doc in results:
-                    item = self.global_index.get(doc.get("uuid"))
-                    item["_score"] = doc.get("_score")
-                    item["_context"] = doc.get("_context")
-
-                    final_results.append(item.copy())
-
-                results = final_results
-            else:
-                results = [self.global_index.get(doc_id) for doc_id in results]
+            results = [self.global_index[doc_id] for doc_id in results]
 
         end_time = time.time()
 
@@ -572,29 +548,21 @@ class JameSQL:
                     for query in query_tree[first_key]:
                         values.append(self._recursively_parse_query(query))
 
-                uuids = [set([doc.get("uuid") for doc in value]) for value in values]
-
-                if len(uuids) == 0:
-                    uuids = [set()]
+                uuids = values
 
                 if first_key == "not":
                     uuid_intersection = set(self.global_index.keys()).difference(
-                        uuids[0]
+                        method(*uuids)
                     )
                 else:
                     uuid_intersection = method(*uuids)
 
-                new_values = defaultdict(int)
+                # new_values = defaultdict(int)
 
-                for value in values:
-                    for v in value:
-                        if v.get("uuid") in uuid_intersection:
-                            new_values[v.get("uuid")] += v.get("_score", 1)
-
-                docs = [self.global_index.get(uuid) for uuid in uuid_intersection]
-
-                for doc in docs:
-                    doc["_score"] = new_values.get(doc.get("uuid"), 1)
+                # for value in values:
+                #     for v in value:
+                #         if v.get("uuid") in uuid_intersection:
+                #             new_values[v.get("uuid")] += v.get("_score", 1)
 
                 acc = set.union(acc, uuid_intersection)
             elif first_key in self.SELF_METHODS:
@@ -602,15 +570,12 @@ class JameSQL:
 
                 acc = set.union(getattr(self, func)(query_tree[first_key]))
             else:
-                results = [
-                    doc
-                    for doc in self._run(
-                        {"query": query_tree}, list(query_tree.keys())[0]
-                    )
-                ]
-                acc = set.union(acc, set([doc.get("uuid") for doc in results]))
+                results, result_uuids = self._run(
+                    {"query": query_tree}, list(query_tree.keys())[0]
+                )
+                acc = set.union(acc, result_uuids)
 
-        return [self.global_index.get(doc_id) for doc_id in acc]
+        return acc
     
     def _turn_query_into_fuzzy_options(self, query_term: dict) -> dict:
         query_terms = []
@@ -678,16 +643,12 @@ class JameSQL:
         if fuzzy:
             query_terms = self._turn_query_into_fuzzy_options(query_term)
 
-        # remove query terms whose words are not in index
-        if gsi_type == GSI_INDEX_STRATEGIES.CONTAINS:
-            query_terms = [term for term in query_terms if term in gsi]
-
         if query_type == "wildcard":
             # replace * with every possible character
             query_terms = [query_term.replace("*", c) for c in string.ascii_lowercase]
 
-            if gsi_type == GSI_INDEX_STRATEGIES.CONTAINS:
-                query_terms = [term for term in query_terms if term in gsi]
+        if gsi_type == GSI_INDEX_STRATEGIES.CONTAINS:
+            query_terms = [term for term in query_terms if term in gsi]
         
         for query_term in query_terms:
             if gsi_type not in (GSI_INDEX_STRATEGIES.FLAT, GSI_INDEX_STRATEGIES.NUMERIC, GSI_INDEX_STRATEGIES.DATE):
@@ -845,12 +806,9 @@ class JameSQL:
 
         response = [self.global_index.get(doc_id) for doc_id in matching_documents]
 
-        # documents may be none if they have been removed from the index but not the GSI
-        response = [doc for doc in response if doc is not None]
-
-        # assign doc ranks
+        # # assign doc ranks
         for i, doc in enumerate(response):
             doc["_score"] = matching_document_scores.get(doc["uuid"], 1) * boost_factor
             doc["_context"] = matching_highlights.get(doc["uuid"], {})
 
-        return response
+        return response, matching_documents
