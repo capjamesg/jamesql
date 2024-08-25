@@ -502,6 +502,16 @@ class JameSQL:
                 else:
                     result["groups"][doc.get(query["group_by"])].append(doc)
 
+        # reset highlights and scores
+        # this is done because highlights and scores are adjusted for each query
+        # in the long term, this should be replaced with logic that
+        # recursively returns scores and highlights in a `metadata`-type field
+        # in _recursively_parse_query
+        
+        for doc in results:
+            del doc["_context"]
+            doc["_score"] = 1
+
         return result
 
     def _get_query_conditions(self, query_tree):
@@ -548,6 +558,7 @@ class JameSQL:
                     for query in query_tree[first_key]:
                         values.append(self._recursively_parse_query(query))
 
+                # uuids = [set(value.get("uuid") for value in value) for value in values]
                 uuids = values
 
                 if first_key == "not":
@@ -804,11 +815,13 @@ class JameSQL:
                                 matching_documents.extend(value)
                                 break
 
-        response = [self.global_index.get(doc_id) for doc_id in matching_documents]
+        for doc in matching_documents:
+            doc = self.global_index.get(doc)
+            doc["_score"] = matching_document_scores.get(doc["uuid"], 1) * boost_factor + doc.get("_score", 1)
 
-        # # assign doc ranks
-        for i, doc in enumerate(response):
-            doc["_score"] = matching_document_scores.get(doc["uuid"], 1) * boost_factor
-            doc["_context"] = matching_highlights.get(doc["uuid"], {})
+            if doc.get("_context") is None:
+                doc["_context"] = []
 
-        return response, matching_documents
+            doc["_context"].extend(matching_highlights.get(doc["uuid"], {}))
+
+        return {}, matching_documents
