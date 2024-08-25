@@ -196,7 +196,7 @@ class JameSQL:
 
         return query
 
-    def string_query_search(self, query: str, query_keys: list = [], start: int = 10) -> List[str]:
+    def string_query_search(self, query: str, query_keys: list = [], start: int = 0) -> List[str]:
         """
         Accepts a string query and returns a list of matching documents.
         """
