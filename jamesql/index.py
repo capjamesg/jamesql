@@ -446,7 +446,7 @@ class JameSQL:
 
             results = self._recursively_parse_query(query["query"])
 
-            results = [self.global_index[doc_id] for doc_id in results]
+            results = [self.global_index.get(doc_id) for doc_id in results if doc_id in self.global_index]
 
         end_time = time.time()
 
@@ -507,10 +507,10 @@ class JameSQL:
         # in the long term, this should be replaced with logic that
         # recursively returns scores and highlights in a `metadata`-type field
         # in _recursively_parse_query
-        
-        for doc in results:
-            del doc["_context"]
-            doc["_score"] = 1
+
+        # for doc in results:
+        #     doc["_context"] = []
+        #     doc["_score"] = 1
 
         return result
 
@@ -658,7 +658,7 @@ class JameSQL:
             # replace * with every possible character
             query_terms = [query_term.replace("*", c) for c in string.ascii_lowercase]
 
-        if gsi_type == GSI_INDEX_STRATEGIES.CONTAINS:
+        if gsi_type == GSI_INDEX_STRATEGIES.CONTAINS: 
             query_terms = [term for term in query_terms if term in gsi]
         
         for query_term in query_terms:
@@ -817,6 +817,9 @@ class JameSQL:
 
         for doc in matching_documents:
             doc = self.global_index.get(doc)
+            if doc is None:
+                continue
+
             doc["_score"] = matching_document_scores.get(doc["uuid"], 1) * boost_factor + doc.get("_score", 1)
 
             if doc.get("_context") is None:

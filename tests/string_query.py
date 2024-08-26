@@ -209,6 +209,13 @@ def create_indices(request):
             "tolerate it",
             DoesNotRaise(),
         ),  # test negation argument
+        (
+            "-started -mural -title:'The'",
+            {'query': {'and': [{'not': {'or': [{'title': {'contains': 'started'}}, {'lyric': {'contains': 'started'}}]}}, {'not': {'or': [{'title': {'contains': 'mural'}}, {'lyric': {'contains': 'mural'}}]}}, {'not': {'title': {'contains': 'The'}}}]}, 'limit': 10},
+            1,
+            "my tears ricochet",
+            DoesNotRaise(),
+        ),  # test negation on field
     ],
 )
 @pytest.mark.timeout(20)
