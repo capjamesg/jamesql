@@ -4,14 +4,16 @@ import re
 grammar = """
 start: query
 
-query: (range_query | negate_query | strict_search_query | word_query | field_query | comparison)+
+or_query: (query "OR" query)*
+query: or_query | query_component
+query_component: (negate_query | range_query | strict_search_query | word_query | field_query | comparison)+
 
 strict_search_query: "'" MULTI_WORD "'"
 comparison: TERM OPERATOR WORD
 range_query: TERM "[" WORD "," WORD "]"
-word_query: WORD
+word_query: WORD 
 field_query: TERM ":" "'" MULTI_WORD "'" | TERM ":" WORD | TERM ":" DOUBLE_QUOTE MULTI_WORD DOUBLE_QUOTE
-negate_query: "-" "'" MULTI_WORD "'" | "-" WORD
+negate_query: "-" (strict_search_query | word_query | field_query | comparison | range_query)
 OPERATOR: ">" | "<" | ">=" | "<="
 DOUBLE_QUOTE: "\\""
 WORD: /[a-zA-Z0-9_.!?*-]+/
@@ -41,22 +43,17 @@ class QueryRewriter(Transformer):
             return "wildcard"
 
         return default
+    
+    def or_query(self, items):
+        return {"or": items}
 
     def negate_query(self, items):
-        result = []
-
-        for key in self.query_keys:
-            field = key
-            value = items[0]
-
-            if self.indexing_strategies.get(field) in {"NUMERIC", "DATE"}:
-                continue
-
-            result.append({field: {self.get_query_strategy(field, value): value}})
-
-        return {"not": {"or": result}}
-
+        return {"not": items[0]}
+    
     def query(self, items):
+        return items[0]
+
+    def query_component(self, items):
         return {"and": items}
 
     def start(self, items):
@@ -120,12 +117,13 @@ class QueryRewriter(Transformer):
         return {"or": result}
 
     def field_query(self, items):
-        field = items[0]
+        # remove negation
+        field = items[0].lstrip("-")
         value = items[1]
 
         if field not in self.query_keys:
             return {}
-
+        
         return {field: {self.get_query_strategy(field, value): value}}
 
     def WORD(self, items):
