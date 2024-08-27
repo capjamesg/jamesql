@@ -3,16 +3,17 @@ import re
 from lark import Lark, Transformer
 
 grammar = """
-start: query
+start: (query)+ sort_component?
 
 or_query: (query ("OR" | "or") query)*
-query: or_query | query_component
+query:  or_query | query_component
 query_component: (negate_query | range_query | strict_search_query | word_query | field_query | comparison)+
 
+sort_component: "sort:" TERM
 strict_search_query: "'" MULTI_WORD "'"
 comparison: TERM OPERATOR WORD
 range_query: TERM "[" WORD "," WORD "]"
-word_query: WORD 
+word_query: WORD
 field_query: TERM ":" "'" MULTI_WORD "'" | TERM ":" WORD | TERM ":" DOUBLE_QUOTE MULTI_WORD DOUBLE_QUOTE
 negate_query: "-" (strict_search_query | word_query | field_query | comparison | range_query)
 OPERATOR: ">" | "<" | ">=" | "<="
@@ -57,11 +58,20 @@ class QueryRewriter(Transformer):
 
     def query_component(self, items):
         return {"and": items}
+    
+    def sort_component(self, items):
+        return {"sort_by": items[0]}
 
     def start(self, items):
         items = {k: v for item in items for k, v in item.items()}
 
-        return {"query": items, "limit": 10}
+        response = {"query": items, "limit": 10}
+
+        if "sort_by" in items:
+            response["sort_by"] = items["sort_by"]
+            del items["sort_by"]
+
+        return response
 
     def OPERATOR(self, items):
         return items.value
