@@ -183,6 +183,13 @@ def create_indices(request):
             DoesNotRaise(),
         ),  # blank query
         (
+            "Started or sky",
+            {'query': {'or': [{'and': [{'or': [{'title': {'contains': 'Started'}}, {'lyric': {'contains': 'Started'}}]}]}, {'and': [{'or': [{'title': {'contains': 'sky'}}, {'lyric': {'contains': 'sky'}}]}]}]}, 'limit': 10, 'sort_by': 'title'},
+            3,
+            "tolerate it",
+            DoesNotRaise(),
+        ),  # test OR argument
+        (
             "I -still",
             {
                 "query": {
@@ -235,8 +242,8 @@ def test_search(
 
         assert len(response["documents"]) == number_of_documents_expected
 
-        # allow items to be in different orders; order doesn't matter
-        result = DeepDiff(internal_query, rewritten_query, ignore_order=True)
+        # allow items to be in different orders; order doesn't matter, ignore sort_by
+        result = DeepDiff(internal_query, rewritten_query, ignore_order=True, exclude_regex_paths=["root\['sort_by'\]"])
 
         assert result == {}
 
