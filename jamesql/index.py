@@ -519,7 +519,10 @@ class JameSQL:
         if query.get("sort_by") is not None and query.get("sort_by") != "_score":
             results_sort_by = query["sort_by"]
 
-            results = sorted(results, key=lambda x: x[results_sort_by])
+            if query.get("sort_order") == "asc":
+                results = sorted(results, key=lambda x: x[results_sort_by])
+            else:
+                results = sorted(results, key=lambda x: x[results_sort_by], reverse=True)
         else:
             results = sorted(results, key=lambda x: x.get("_score", 1), reverse=True)
 

@@ -9,7 +9,7 @@ or_query: (query ("OR" | "or") query)*
 query:  or_query | query_component
 query_component: (negate_query | range_query | strict_search_query | word_query | field_query | comparison)+
 
-sort_component: "sort:" TERM
+sort_component: "sort:" TERM (ORDER)?
 strict_search_query: "'" MULTI_WORD "'"
 comparison: TERM OPERATOR WORD
 range_query: TERM "[" WORD "," WORD "]"
@@ -21,6 +21,7 @@ DOUBLE_QUOTE: "\\""
 WORD: /[a-zA-Z0-9_.!?*-]+/
 MULTI_WORD: /[a-zA-Z0-9 ]+/
 TERM: /[a-zA-Z0-9_]+/
+ORDER: "ASC" | "DESC" | "asc" | "desc"
 
 %import common.WS
 %ignore WS
@@ -46,6 +47,9 @@ class QueryRewriter(Transformer):
             return "wildcard"
 
         return default
+    
+    def ORDER(self, items):
+        return items.value
 
     def or_query(self, items):
         return {"or": items}
@@ -60,7 +64,12 @@ class QueryRewriter(Transformer):
         return {"and": items}
     
     def sort_component(self, items):
-        return {"sort_by": items[0]}
+        result = {"sort_by": items[0]}
+
+        if len(items) > 1:
+            result["sort_order"] = items[1]
+
+        return result
 
     def start(self, items):
         items = {k: v for item in items for k, v in item.items()}
@@ -69,7 +78,9 @@ class QueryRewriter(Transformer):
 
         if "sort_by" in items:
             response["sort_by"] = items["sort_by"]
+            response["sort_order"] = items.get("sort_order", "asc")
             del items["sort_by"]
+            del items["sort_order"]
 
         return response
 
