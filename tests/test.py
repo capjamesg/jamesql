@@ -411,6 +411,7 @@ def test_query_score_and_boost(
         assert response["documents"][0]["title"] == top_document_name
         assert response["documents"][0]["_score"] == top_document_score
 
+
 def test_add_item(
     create_indices,
 ):

@@ -163,28 +163,91 @@ def create_indices(request):
         ),  # test multi-word search
         (
             "-started -with mural",
-            {'query': {'and': [{'not': {'or': [{'title': {'contains': 'started'}}, {'lyric': {'contains': 'started'}}]}}, {'not': {'or': [{'title': {'contains': 'with'}}, {'lyric': {'contains': 'with'}}]}}, {'or': [{'title': {'contains': 'mural'}}, {'lyric': {'contains': 'mural'}}]}]}, 'limit': 10},
+            {
+                "query": {
+                    "and": [
+                        {
+                            "not": {
+                                "or": [
+                                    {"title": {"contains": "started"}},
+                                    {"lyric": {"contains": "started"}},
+                                ]
+                            }
+                        },
+                        {
+                            "not": {
+                                "or": [
+                                    {"title": {"contains": "with"}},
+                                    {"lyric": {"contains": "with"}},
+                                ]
+                            }
+                        },
+                        {
+                            "or": [
+                                {"title": {"contains": "mural"}},
+                                {"lyric": {"contains": "mural"}},
+                            ]
+                        },
+                    ]
+                },
+                "limit": 10,
+            },
             1,
             "tolerate it",
             DoesNotRaise(),
         ),  # two negation queries
         (
             "title:tolerate lyric:I",
-            {'query': {'and': [{'title': {'contains': 'tolerate'}}, {'lyric': {'contains': 'I'}}]}, 'limit': 10},
+            {
+                "query": {
+                    "and": [
+                        {"title": {"contains": "tolerate"}},
+                        {"lyric": {"contains": "I"}},
+                    ]
+                },
+                "limit": 10,
+            },
             1,
             "tolerate it",
             DoesNotRaise(),
         ),  # two field queries
         (
             "",
-            {'query': {}},
+            {"query": {}},
             0,
             "",
             DoesNotRaise(),
         ),  # blank query
         (
             "Started or sky",
-            {'query': {'or': [{'and': [{'or': [{'title': {'contains': 'Started'}}, {'lyric': {'contains': 'Started'}}]}]}, {'and': [{'or': [{'title': {'contains': 'sky'}}, {'lyric': {'contains': 'sky'}}]}]}]}, 'limit': 10, 'sort_by': 'title'},
+            {
+                "query": {
+                    "or": [
+                        {
+                            "and": [
+                                {
+                                    "or": [
+                                        {"title": {"contains": "Started"}},
+                                        {"lyric": {"contains": "Started"}},
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "and": [
+                                {
+                                    "or": [
+                                        {"title": {"contains": "sky"}},
+                                        {"lyric": {"contains": "sky"}},
+                                    ]
+                                }
+                            ]
+                        },
+                    ]
+                },
+                "limit": 10,
+                "sort_by": "title",
+            },
             3,
             "tolerate it",
             DoesNotRaise(),
@@ -218,7 +281,30 @@ def create_indices(request):
         ),  # test negation argument
         (
             "-started -mural -title:'The'",
-            {'query': {'and': [{'not': {'or': [{'title': {'contains': 'started'}}, {'lyric': {'contains': 'started'}}]}}, {'not': {'or': [{'title': {'contains': 'mural'}}, {'lyric': {'contains': 'mural'}}]}}, {'not': {'title': {'contains': 'The'}}}]}, 'limit': 10},
+            {
+                "query": {
+                    "and": [
+                        {
+                            "not": {
+                                "or": [
+                                    {"title": {"contains": "started"}},
+                                    {"lyric": {"contains": "started"}},
+                                ]
+                            }
+                        },
+                        {
+                            "not": {
+                                "or": [
+                                    {"title": {"contains": "mural"}},
+                                    {"lyric": {"contains": "mural"}},
+                                ]
+                            }
+                        },
+                        {"not": {"title": {"contains": "The"}}},
+                    ]
+                },
+                "limit": 10,
+            },
             1,
             "my tears ricochet",
             DoesNotRaise(),
@@ -243,7 +329,12 @@ def test_search(
         assert len(response["documents"]) == number_of_documents_expected
 
         # allow items to be in different orders; order doesn't matter, ignore sort_by
-        result = DeepDiff(internal_query, rewritten_query, ignore_order=True, exclude_regex_paths=["root\['sort_by'\]"])
+        result = DeepDiff(
+            internal_query,
+            rewritten_query,
+            ignore_order=True,
+            exclude_regex_paths=["root\['sort_by'\]"],
+        )
 
         assert result == {}
 

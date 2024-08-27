@@ -69,14 +69,21 @@ def create_indices(request):
             {
                 "query": {
                     "and": [
-                        {"lyric": {"contains": "my", "highlight": True, "strict": True, "highlight_stride": 10}},
+                        {
+                            "lyric": {
+                                "contains": "my",
+                                "highlight": True,
+                                "strict": True,
+                                "highlight_stride": 10,
+                            }
+                        },
                     ]
                 },
                 "metrics": ["aggregate"],
                 "limit": 10,
                 "sort_by": "title",
             },
-            {'unique_record_values': {'title': 1, 'lyric': 1}},
+            {"unique_record_values": {"title": 1, "lyric": 1}},
             1,
             "tolerate it",
             DoesNotRaise(),
@@ -100,7 +107,7 @@ def create_indices(request):
                 "limit": 10,
                 "sort_by": "title",
             },
-            {'unique_record_values': {'title': 3, 'lyric': 3}},
+            {"unique_record_values": {"title": 3, "lyric": 3}},
             3,
             "The Bolter",
             DoesNotRaise(),
@@ -124,7 +131,9 @@ def test_search(
         assert len(response["documents"]) == number_of_documents_expected
 
         # allow items to be in different orders; order doesn't matter
-        result = DeepDiff(response.get("metrics", {}), introspection_results, ignore_order=True)
+        result = DeepDiff(
+            response.get("metrics", {}), introspection_results, ignore_order=True
+        )
 
         assert result == {}
 

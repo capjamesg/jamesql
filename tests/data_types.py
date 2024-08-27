@@ -70,7 +70,7 @@ def create_indices(request):
             2,
             "my tears ricochet",
             DoesNotRaise(),
-        ), # test equals with boolean
+        ),  # test equals with boolean
         (
             {
                 "query": {
@@ -82,7 +82,7 @@ def create_indices(request):
             1,
             "The Bolter",
             DoesNotRaise(),
-        ), # test greater than with floating point
+        ),  # test greater than with floating point
         (
             {
                 "query": {
@@ -94,7 +94,7 @@ def create_indices(request):
             0,
             "",
             DoesNotRaise(),
-        ), # dictionaries are not indexable, so this will return a 0 result
+        ),  # dictionaries are not indexable, so this will return a 0 result
         (
             {
                 "query": {
@@ -106,7 +106,7 @@ def create_indices(request):
             1,
             "The Bolter",
             DoesNotRaise(),
-        ), # test greater than with date
+        ),  # test greater than with date
         (
             {
                 "query": {
@@ -118,7 +118,7 @@ def create_indices(request):
             2,
             "my tears ricochet",
             DoesNotRaise(),
-        ), # test greater than with date
+        ),  # test greater than with date
     ],
 )
 @pytest.mark.timeout(20)

@@ -71,63 +71,110 @@ def create_indices(request):
     [
         (
             "listens>100",
-            {'query': {'and': [{'listens': {'greater_than': 100}}]}, 'limit': 10},
+            {"query": {"and": [{"listens": {"greater_than": 100}}]}, "limit": 10},
             2,
             "The Bolter",
             DoesNotRaise(),
         ),  # test > operator
         (
             "listens<101",
-            {'query': {'and': [{'listens': {'less_than': 101}}]}, 'limit': 10},
+            {"query": {"and": [{"listens": {"less_than": 101}}]}, "limit": 10},
             1,
             "tolerate it",
             DoesNotRaise(),
         ),  # test < operator
         (
             "listens<=101",
-            {'query': {'and': [{'listens': {'less_than_or_equal': 101}}]}, 'limit': 10},
+            {"query": {"and": [{"listens": {"less_than_or_equal": 101}}]}, "limit": 10},
             1,
             "tolerate it",
             DoesNotRaise(),
         ),  # test <= operator
         (
             "listens>=101",
-            {'query': {'and': [{'listens': {'greater_than_or_equal': 101}}]}, 'limit': 10},
+            {
+                "query": {"and": [{"listens": {"greater_than_or_equal": 101}}]},
+                "limit": 10,
+            },
             2,
             "The Bolter",
             DoesNotRaise(),
         ),  # test >= operator
         (
             "listens[200, 300] category:'pop'",
-            {'query': {'and': [{'listens': {'range': [200, 300]}}, {'category': {'contains': 'pop'}}]}, 'limit': 10},
+            {
+                "query": {
+                    "and": [
+                        {"listens": {"range": [200, 300]}},
+                        {"category": {"contains": "pop"}},
+                    ]
+                },
+                "limit": 10,
+            },
             1,
             "my tears ricochet",
             DoesNotRaise(),
         ),  # test range operator with a single categorical data query
         (
             "listens[200, 300]",
-            {'query': {'and': [{'listens': {'range': [200, 300]}}]}, 'limit': 10},
+            {"query": {"and": [{"listens": {"range": [200, 300]}}]}, "limit": 10},
             2,
             "The Bolter",
             DoesNotRaise(),
         ),  # test range operator
         (
             "listens>=101 sky",
-            {'query': {'and': [{'listens': {'greater_than_or_equal': 101}}, {'or': [{'title': {'contains': 'sky'}}, {'lyric': {'contains': 'sky'}}, {'category': {'contains': 'sky'}}]}]}, 'limit': 10},
+            {
+                "query": {
+                    "and": [
+                        {"listens": {"greater_than_or_equal": 101}},
+                        {
+                            "or": [
+                                {"title": {"contains": "sky"}},
+                                {"lyric": {"contains": "sky"}},
+                                {"category": {"contains": "sky"}},
+                            ]
+                        },
+                    ]
+                },
+                "limit": 10,
+            },
             1,
             "my tears ricochet",
             DoesNotRaise(),
         ),  # test >= operator with a single word query
         (
             "category:'pop' sky",
-            {'query': {'and': [{'category': {'contains': 'pop'}}, {'or': [{'title': {'contains': 'sky'}}, {'lyric': {'contains': 'sky'}}, {'category': {'contains': 'sky'}}]}]}, 'limit': 10},
+            {
+                "query": {
+                    "and": [
+                        {"category": {"contains": "pop"}},
+                        {
+                            "or": [
+                                {"title": {"contains": "sky"}},
+                                {"lyric": {"contains": "sky"}},
+                                {"category": {"contains": "sky"}},
+                            ]
+                        },
+                    ]
+                },
+                "limit": 10,
+            },
             2,
             "my tears ricochet",
             DoesNotRaise(),
         ),  # test a single categorical data query with a single word query
         (
             "category:'pop' category:'acoustic'",
-            {'query': {'and': [{'category': {'contains': 'pop'}}, {'category': {'contains': 'acoustic'}}]}, 'limit': 10},
+            {
+                "query": {
+                    "and": [
+                        {"category": {"contains": "pop"}},
+                        {"category": {"contains": "acoustic"}},
+                    ]
+                },
+                "limit": 10,
+            },
             1,
             "my tears ricochet",
             DoesNotRaise(),
@@ -150,9 +197,7 @@ def test_search(
         response = index.string_query_search(query)
 
         # sort response by documents[0]["title"] to make it easier to compare
-        response["documents"] = sorted(
-            response["documents"], key=lambda x: x["title"]
-        )
+        response["documents"] = sorted(response["documents"], key=lambda x: x["title"])
 
         assert len(response["documents"]) == number_of_documents_expected
 

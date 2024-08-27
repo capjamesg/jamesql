@@ -1,13 +1,12 @@
 import json
 import sys
 from contextlib import ExitStack as DoesNotRaise
-from deepdiff import DeepDiff
 
 import pytest
+from deepdiff import DeepDiff
 
 from jamesql import JameSQL
 from jamesql.index import GSI_INDEX_STRATEGIES
-
 
 
 def pytest_addoption(parser):
@@ -72,17 +71,19 @@ def create_indices(request):
             {
                 "query": {
                     "and": [
-                        {"lyric": {"contains": "kiss", "highlight": True, "strict": True}}
+                        {
+                            "lyric": {
+                                "contains": "kiss",
+                                "highlight": True,
+                                "strict": True,
+                            }
+                        }
                     ]
                 },
                 "limit": 10,
-                "sort_by": "title"
+                "sort_by": "title",
             },
-            [
-                [
-                    "Started with a kiss"
-                ]
-            ],
+            [["Started with a kiss"]],
             1,
             "The Bolter",
             DoesNotRaise(),
@@ -105,9 +106,7 @@ def test_search(
 
         assert len(response["documents"]) == number_of_documents_expected
 
-        for actual_context, expected_context in zip(
-            response["documents"], highlights
-        ):
+        for actual_context, expected_context in zip(response["documents"], highlights):
             assert actual_context["_context"] == expected_context
 
         if number_of_documents_expected > 0:

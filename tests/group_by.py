@@ -1,18 +1,16 @@
 import json
 import sys
 from contextlib import ExitStack as DoesNotRaise
-from deepdiff import DeepDiff
 
 import pytest
+from deepdiff import DeepDiff
 
 from jamesql import JameSQL
 from jamesql.index import GSI_INDEX_STRATEGIES
 
 
-
 def pytest_addoption(parser):
     parser.addoption("--benchmark", action="store")
-
 
 
 @pytest.fixture(scope="session")
@@ -63,32 +61,56 @@ def create_indices(request):
     [
         (
             {
-                "query": {
-                    "and": [
-                        {"lyric": {"contains": "with"}}
-                    ]
-                },
+                "query": {"and": [{"lyric": {"contains": "with"}}]},
                 "limit": 10,
                 "group_by": "title",
-                "sort_by": "title"
+                "sort_by": "title",
             },
-            {'The Bolter': [{'title': 'The Bolter', 'lyric': 'Started with a kiss', 'category': ['pop', 'acoustic'], 'uuid': '18fbe44e19a24153b0a22841261db61c', '_score': 1, '_context': {}}]},
+            {
+                "The Bolter": [
+                    {
+                        "title": "The Bolter",
+                        "lyric": "Started with a kiss",
+                        "category": ["pop", "acoustic"],
+                        "uuid": "18fbe44e19a24153b0a22841261db61c",
+                        "_score": 1,
+                        "_context": {},
+                    }
+                ]
+            },
             1,
             "The Bolter",
             DoesNotRaise(),
         ),  # test group by on string field
         (
             {
-                "query": {
-                    "and": [
-                        {"lyric": {"contains": "kiss"}}
-                    ]
-                },
+                "query": {"and": [{"lyric": {"contains": "kiss"}}]},
                 "group_by": "category",
                 "limit": 10,
-                "sort_by": "title"
+                "sort_by": "title",
             },
-            {'pop': [{'title': 'The Bolter', 'lyric': 'Started with a kiss', 'category': ['pop', 'acoustic'], 'uuid': 'eb11180b16e34467a5d457f7115fda38', '_score': 1, '_context': {}}], 'acoustic': [{'title': 'The Bolter', 'lyric': 'Started with a kiss', 'category': ['pop', 'acoustic'], 'uuid': 'eb11180b16e34467a5d457f7115fda38', '_score': 1, '_context': {}}]},
+            {
+                "pop": [
+                    {
+                        "title": "The Bolter",
+                        "lyric": "Started with a kiss",
+                        "category": ["pop", "acoustic"],
+                        "uuid": "eb11180b16e34467a5d457f7115fda38",
+                        "_score": 1,
+                        "_context": {},
+                    }
+                ],
+                "acoustic": [
+                    {
+                        "title": "The Bolter",
+                        "lyric": "Started with a kiss",
+                        "category": ["pop", "acoustic"],
+                        "uuid": "eb11180b16e34467a5d457f7115fda38",
+                        "_score": 1,
+                        "_context": {},
+                    }
+                ],
+            },
             1,
             "The Bolter",
             DoesNotRaise(),
@@ -112,7 +134,15 @@ def test_search(
         assert len(response["documents"]) == number_of_documents_expected
 
         # exclude uuids since they are randomly assigned on indexing in this configuration
-        assert DeepDiff(dict(response["groups"]), group_by_result, ignore_order=True, exclude_regex_paths=["root\[.*\]\['uuid'\]"]) == {}
+        assert (
+            DeepDiff(
+                dict(response["groups"]),
+                group_by_result,
+                ignore_order=True,
+                exclude_regex_paths=["root\[.*\]\['uuid'\]"],
+            )
+            == {}
+        )
 
         if number_of_documents_expected > 0:
             assert response["documents"][0]["title"] == top_result_value
