@@ -4,7 +4,7 @@ import re
 grammar = """
 start: query
 
-or_query: (query "OR" query)*
+or_query: (query ("OR" | "or") query)*
 query: or_query | query_component
 query_component: (negate_query | range_query | strict_search_query | word_query | field_query | comparison)+
 
