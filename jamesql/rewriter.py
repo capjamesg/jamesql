@@ -1,5 +1,6 @@
-from lark import Lark, Transformer
 import re
+
+from lark import Lark, Transformer
 
 grammar = """
 start: query
@@ -31,6 +32,7 @@ OPERATOR_MAP = {
     "<=": "less_than_or_equal",
 }
 
+
 class QueryRewriter(Transformer):
     def __init__(self, default_strategies=None, query_keys=None):
         self.indexing_strategies = default_strategies
@@ -43,13 +45,13 @@ class QueryRewriter(Transformer):
             return "wildcard"
 
         return default
-    
+
     def or_query(self, items):
         return {"or": items}
 
     def negate_query(self, items):
         return {"not": items[0]}
-    
+
     def query(self, items):
         return items[0]
 
@@ -60,7 +62,7 @@ class QueryRewriter(Transformer):
         items = {k: v for item in items for k, v in item.items()}
 
         return {"query": items, "limit": 10}
-    
+
     def OPERATOR(self, items):
         return items.value
 
@@ -81,7 +83,7 @@ class QueryRewriter(Transformer):
 
     def MULTI_WORD(self, items):
         return items.value
-    
+
     def comparison(self, items):
         field = items[0]
         operator = items[1]
@@ -91,7 +93,7 @@ class QueryRewriter(Transformer):
             return {}
 
         return {field: {OPERATOR_MAP[operator]: value}}
-    
+
     def range_query(self, items):
         field = items[0]
         start = items[1]
@@ -123,23 +125,23 @@ class QueryRewriter(Transformer):
 
         if field not in self.query_keys:
             return {}
-        
+
         return {field: {self.get_query_strategy(field, value): value}}
 
     def WORD(self, items):
         if items.value.isdigit():
             return int(items.value)
-        
+
         return items.value
 
 
 def string_query_to_jamesql(query, query_keys, default_strategies={}):
     if query.strip() == "":
         return {"query": {}}
-    
+
     # remove punctuation not in grammar
     query = re.sub(r"[^a-zA-Z0-9_.,!?*:\-'<>=\[\] ]", "", query)
-    
+
     tree = Lark(grammar).parse(query)
 
     rewritten_query = QueryRewriter(
