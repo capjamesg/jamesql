@@ -6,7 +6,7 @@
 
 # JameSQL
 
-A JameSQL database implemented in Python.
+An in-memoy, NoSQL database implemented in Python.
 
 This project has support for:
 
