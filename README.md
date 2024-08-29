@@ -40,7 +40,7 @@ To create a database, use the following code:
 ```python
 from nosql import NoSQL
 
-index = JameSQL()
+index = JameSQL.load()
 ```
 
 ### Add documents to a database
@@ -607,7 +607,25 @@ To run a string query, use the following code:
 results = index.string_query_search("title:'tolerate it' mural")
 ```
 
-_Note: Single quotes (') must be used to denote literal terms. Quotation marks (") do not yet work._
+## Data Storage
+
+JameSQL indices are stored in memory and on disk.
+
+When you call the `add()` method, the document is appended to an `index.jamesql` file in the directory in which your program is running. This file is serialized as JSONL.
+
+When you load an index, all entries in the `index.jamesql` file will be read back into memory.
+
+_Note: You will need to manually reconstruct your indices using the `create_gsi()` method after loading an index._
+
+## Data Consistency
+
+When you call `add()`, a `journal.jamesql` file is created. This is used to store the contents of the `add()` operation you are executing. If JameSQL terminates during an `add()` call for any reason (i.e. system crash, program termination), this journal will be used to reconcile the database.
+
+Next time you initialize a JameSQL instance, your documents in `index.jamesql` will be read into memory. Then, the transactions in `journal.jamesql` will be replayed to ensure the index is consistent. Finally, the `journal.jamesql` file will be deleted.
+
+You can access the JSON of the last transaction issued, sans the `uuid`, by calling `index.last_transaction`.
+
+If you were in the middle of ingesting data, this could be used to resume the ingestion process from where you left off by allowing you to skip records that were already ingested.
 
 ## Web Interface
 

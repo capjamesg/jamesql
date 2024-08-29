@@ -10,6 +10,7 @@ from typing import Dict, List
 import orjson
 import pybmoore
 import pygtrie
+import hashlib
 from BTrees.OOBTree import OOBTree
 from lark import Lark
 
@@ -18,6 +19,8 @@ from jamesql.rewriter import string_query_to_jamesql
 from .script_lang import JameSQLScriptTransformer, grammar
 
 INDEX_STORE = os.path.join(os.path.expanduser("~"), ".jamesql")
+JOURNAL_FILE = os.path.join(os.getcwd(), "journal.jamesql")
+INDEX_DATA_FILE = os.path.join(os.getcwd(), "index.jamesql")
 
 if not os.path.exists(INDEX_STORE):
     os.makedirs(INDEX_STORE)
@@ -72,6 +75,10 @@ class JameSQL:
         self.global_index = {}
         self.uuids_to_position_in_global_index = {}
         self.gsis = {}
+        self.last_transaction_after_recovery = None
+
+    def __len__(self):
+        return len(self.global_index)
 
     def _close_to(self, query: list) -> dict:
         """
@@ -157,35 +164,57 @@ class JameSQL:
 
         return index
 
-    def save(self, index_name: str) -> None:
-        """
-        This function saves the index to disk.
-        """
-
-        structure = {
-            "global_index": self.global_index,
-            "uuids_to_position_in_global_index": self.uuids_to_position_in_global_index,
-            "gsis": self.gsis,
-        }
-
-        os.makedirs(INDEX_STORE, exist_ok=True)
-
-        with open(os.path.join(INDEX_STORE, index_name), "w") as f:
-            f.write(json.dumps(structure))
-
-    def load(self, index_name: str) -> None:
+    @classmethod
+    def load(cls) -> "JameSQL":
         """
         This function reads the index from disk.
         """
 
-        with open(os.path.join(INDEX_STORE, index_name), "r") as f:
-            structure = orjson.loads(f.read())
+        instance = cls()
 
-            self.global_index = structure["global_index"]
-            self.uuids_to_position_in_global_index = structure[
-                "uuids_to_position_in_global_index"
-            ]
-            self.gsis = structure["gsis"]
+        if os.path.exists(INDEX_DATA_FILE):
+            with open(INDEX_DATA_FILE) as f:
+                file = f.read().splitlines().copy()
+
+        for line in file:
+            document = json.loads(line)
+            # records are not written to the index using write_to_journal=False
+            # this flag also ensures that records aren't saved in the index
+            # if write_to_journal was True, the records would be saved in the index again
+            # leading to duplicate records and thus data inconsistency
+            instance.add(document.copy(), doc_id=None, write_to_journal=False)
+
+        # at this step, the database is reconciling its history from the journal
+        # no other writes can happen until this is done
+        # the write_to_journal flag ensures that the current journal is not overwritten while
+        # the database is being reconciled
+        if os.path.exists(JOURNAL_FILE):
+            with open(JOURNAL_FILE, "r") as f:
+                records = f.read().splitlines().copy()
+
+            with open(INDEX_DATA_FILE, "a") as f:
+                for idx, line in enumerate(records):
+                    op_record = json.loads(line)
+                    if op_record["operation"] == "add":
+                        document = instance.add(
+                            op_record["document"], write_to_journal=False
+                        )
+                    elif op_record["operation"] == "remove":
+                        document = instance.remove(
+                            op_record["document"]["uuid"], write_to_journal=False
+                        )
+
+                    f.write(json.dumps(document) + "\n")
+
+                    if idx == len(records) - 1:
+                        instance.last_transaction_after_recovery = hashlib.sha1(
+                            orjson.dumps(records).hex()
+                        ).hexdigest()
+
+            if os.path.exists(JOURNAL_FILE):
+                os.remove(JOURNAL_FILE)
+
+        return instance
 
     def _compute_string_query(self, query: str, query_keys: list = []) -> List[str]:
         """
@@ -248,9 +277,11 @@ class JameSQL:
 
         return counts
 
-    def add(self, document: list, doc_id=None) -> Dict[str, dict]:
+    def add(
+        self, document: dict, doc_id=None, write_to_journal=True
+    ) -> Dict[str, dict]:
         """
-        This function accepts a list of documents and turns them into a dictionary with the structure:
+        This function accepts a document and indexes it.
 
         {
             partition_key: document
@@ -259,8 +290,15 @@ class JameSQL:
         Every document is assigned a UUID.
         """
 
-        if doc_id:
+        if write_to_journal:
+            with open(JOURNAL_FILE, "a") as f:
+                op_record = {"operation": "add", "document": document}
+                f.write(json.dumps(op_record) + "\n")
+
+        if doc_id is not None:
             document["uuid"] = doc_id
+        elif document.get("uuid"):
+            doc_id = document["uuid"]
         else:
             document["uuid"] = uuid.uuid4().hex
 
@@ -332,6 +370,14 @@ class JameSQL:
                         + "."
                     )
 
+        if write_to_journal:
+            with open(INDEX_DATA_FILE, "a") as f:
+                f.write(json.dumps(document) + "\n")
+
+            os.remove(JOURNAL_FILE)
+
+        return document
+
     def update(self, uuid: str, document: dict) -> Dict[str, dict]:
         """
         Accepts a UUID and a Tdocument and updates the document associated with that key.
@@ -350,7 +396,14 @@ class JameSQL:
         Accepts a UUID and removes the document associated with that key.
         """
 
+        with open(JOURNAL_FILE, "a") as f:
+            op_record = {"operation": "remove", "document": {"uuid": uuid}}
+            f.write(json.dumps(op_record) + "\n")
+
         del self.global_index[uuid]
+
+        with open(JOURNAL_FILE, "w") as f:
+            f.write("")
 
     def create_gsi(
         self,
@@ -522,7 +575,9 @@ class JameSQL:
             if query.get("sort_order") == "asc":
                 results = sorted(results, key=lambda x: x[results_sort_by])
             else:
-                results = sorted(results, key=lambda x: x[results_sort_by], reverse=True)
+                results = sorted(
+                    results, key=lambda x: x[results_sort_by], reverse=True
+                )
         else:
             results = sorted(results, key=lambda x: x.get("_score", 1), reverse=True)
 
