@@ -1,6 +1,8 @@
 import re
 
 from lark import Lark, Transformer
+from lark.visitors import Visitor, Interpreter
+from .query_simplifier import simplifier
 
 grammar = """
 start: (query)+ sort_component?
@@ -34,6 +36,47 @@ OPERATOR_MAP = {
     "<=": "less_than_or_equal",
 }
 
+class QuerySimplifier(Transformer):
+    def __init__(self):
+        self.terms = []
+
+    def WORD(self, items):
+        return items.value
+    
+    def word_query(self, items):
+        self.terms.append(items[0])
+        return items[0]
+    
+    def field_query(self, items):
+        return items[0]
+    
+    def query_component(self, items):
+        return items[0]
+    
+    def query(self, items):
+        return items[0]
+
+    def or_query(self, items):
+        self.terms.append([items[0], "OR", items[1]])
+        return items[0]
+    
+    def start(self, items):
+        return items[0]
+    
+    def field_query(self, items):
+        self.terms.append(items[0] + ":" + items[1])
+        return items[0] + ":" + items[1]
+    
+    def TERM(self, items):
+        return items.value
+    
+    def negate_query(self, items):
+        if items[0] in self.terms:
+            self.terms.remove(items[0])
+
+        self.terms.append(["NOT", items[0]])
+        
+        return items[0]
 
 class QueryRewriter(Transformer):
     def __init__(self, default_strategies=None, query_keys=None):
@@ -155,15 +198,31 @@ class QueryRewriter(Transformer):
 
         return items.value
 
-
-def string_query_to_jamesql(query, query_keys, default_strategies={}):
-    if query.strip() == "":
-        return {"query": {}}
-
+def simplify_string_query(parser, query):
     # remove punctuation not in grammar
     query = re.sub(r"[^a-zA-Z0-9_.,!?*:\-'<>=\[\] ]", "", query)
 
-    tree = Lark(grammar).parse(query)
+    tree = parser.parse(query)
+
+    print(tree.pretty())
+
+    result = QuerySimplifier()
+    result.transform(tree.copy())
+
+    query = simplifier(result.terms)
+    query = " ".join(query).strip()
+
+    return query
+
+def string_query_to_jamesql(query, query_keys, default_strategies={}):
+    parser = Lark(grammar)
+
+    query = simplify_string_query(parser, query)
+
+    if query.strip() == "":
+        return {"query": {}}
+
+    tree = parser.parse(query)
 
     rewritten_query = QueryRewriter(
         default_strategies=default_strategies, query_keys=query_keys

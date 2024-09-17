@@ -245,7 +245,7 @@ class JameSQL:
             results = []
             
             for i in self.autosuggest_index.itervalues(prefix=query.lower(), shallow = False):
-                if self.autosuggest_index.has_subtrie(i.lower()):
+                if self.autosuggest_index.has_subtrie(i):
                     continue
                 results.append(i)
 
@@ -873,11 +873,11 @@ class JameSQL:
 
                     contexts = []
 
-                    candidates = set(self.gsis[query_field]["gsi"].get(trigrams[0], []))
+                    candidates = set(self.gsis[query_field]["gsi"][trigrams[0]])
 
                     for trigram in trigrams:
                         candidates = candidates.intersection(
-                            set(self.gsis[query_field]["gsi"].get(trigram, []))
+                            set(self.gsis[query_field]["gsi"][trigram])
                         )
 
                     # candidate[2] is the document uuid
