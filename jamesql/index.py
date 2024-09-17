@@ -314,6 +314,13 @@ class JameSQL:
         }
 
         return counts
+    
+    def scroll(
+        self, query: dict, scroll_size: int = 10
+    ):
+        for i in range(0, len(self.global_index), scroll_size):
+            query["skip"] = i
+            yield self.search(query)
 
     def add(
         self, document: dict, doc_id=None, write_to_journal=True

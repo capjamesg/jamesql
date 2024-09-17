@@ -73,6 +73,8 @@ There are four indexing strategies currently implemented:
 - `GSI_INDEX_STRATEGIES.NUMERIC`: Creates several buckets to allow for efficient search of numeric values, especially values with high cardinality.
 - `GSI_INDEX_STRATEGIES.FLAT`: Stores the field as the data type it is. A flat index is created of values that are not strings or numbers. This is the default. For example, if you are indexing document titles and don't need to do a `starts_with` query, you may choose a flat index to allow for efficient `equals` and `contains` queries.
 - `GSI_INDEX_STRATEGIES.PREFIX`: Creates a trie index for the field. This is useful for fields that contain short strings (i.e. titles).
+- `GSI_INDEX_STRATEGIES.CATEGORICAL`: Creates a categorical index for the field. This is useful for fields that contain specific categories (i.e. genres).
+- `GSI_INDEX_STRATEGIES.TRIGRAM_CODE`: Creates a character-level trigram index for the field. This is useful for efficient code search. See the "Code Search" documentation later in this README for more information about using code search with JameSQL.
 
 You can manually set an index type by creating a index (called a GSI), like so:
 
@@ -343,6 +345,28 @@ To search for documents that match a query, use the following code:
 result = index.search(query)
 ```
 
+This returns a JSON payload with the following structure:
+
+```json
+{
+    "documents": [
+        {"uuid": "1", ...}
+        {"uuid": "2", ...}
+        ...
+    ],
+    "query_time": 0.0001,
+    "total_results": 200
+}
+```
+
+You can search through multiple pages with the `scroll()` method:
+
+```python
+result = index.scroll(query)
+```
+
+`scroll()` returns a generator that yields documents in the same format as `search()`.
+
 ### Strict matching
 
 By default, a search query on a text field will find any document where the field contains any word in the query string. For example, a query for `tolerate it` on a `title` field will match any document whose `title` that contains `tolerate` or `it`. This is called a non-strict match.
@@ -606,6 +630,87 @@ To run a string query, use the following code:
 ```python
 results = index.string_query_search("title:'tolerate it' mural")
 ```
+
+When you run a string query, JameSQL will attempt to simplify the query to make it more efficient. For example, if you search for `-sky sky mural`, the query will be `mural` because `-sky` negates the `sky` mention.
+
+## Autosuggest
+
+You can enable autosuggest using one or more fields in an index. This can be used to efficiently find records that start with a given prefix.
+
+To enable autosuggest on an index, run:
+
+```python
+index = JameSQL()
+
+...
+
+index.enable_autosuggest("field")
+```
+
+Where `field` is the name of the field on which you want to enable autosuggest.
+
+You can enable autosuggest on multiple fields:
+
+```python
+index.enable_autosuggest("field1")
+index.enable_autosuggest("field2")
+```
+
+When you enable autosuggest on a field, JameSQL will create a trie index for that field. This index is used to efficiently find records that start with a given prefix.
+
+To run an autosuggest query, use the following code:
+
+```python
+suggestions = index.autosuggest("started", match_full_record=True, limit = 1)
+```
+
+This will automatically return records that start with the prefix `started`.
+
+The `match_full_record` parameter indicates whether to return full record names, or any records starting with a term.
+
+`match_full_record=True` means that the full record name will be returned. This is ideal to enable selection between full records.
+
+`match_full_record=False` means that any records starting with the term will be returned. This is ideal for autosuggesting single words.
+
+For example, given the query `start`, matching against full records with `match_full_record=True` would return:
+
+- `Started with a kiss`
+
+This is the content of a full document.
+
+`match_full_record=False`, on the other hand, would return:
+
+- `started`
+- `started with a kiss`
+
+This contains both a root word starting with `start` and full documents starting with `start`.
+
+This feature is case insensitive.
+
+The `limit` argument limits the number of results returned.
+
+## Code Search
+
+You can use JameSQL to efficiently search through code.
+
+To do so, first create a `TRIGRAM_CODE` index on the field you want to search.
+
+When you add documents, include at least the following two fields:
+
+- `file_name`: The name of the file the code is in.
+- `code`: The code you want to index.
+
+When you search for code, all matching documents will have a `_context` key with the following structure:
+
+```python
+{
+    "line": "1",
+    "code": "..."
+}
+```
+
+This tells you on what line your search matched, and the code that matched. This information is ideal to highlight specific lines relevant to your query.
+
 
 ## Data Storage
 
