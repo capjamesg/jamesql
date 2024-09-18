@@ -69,7 +69,7 @@ When you run a query on a field for the first time, JameSQL will automatically s
 
 There are four indexing strategies currently implemented:
 
-- `GSI_INDEX_STRATEGIES.CONTAINS`: Creates a reverse index for the field. This is useful for fields that contain longer strings (i.e. body text in a blog post).
+- `GSI_INDEX_STRATEGIES.CONTAINS`: Creates a reverse index for the field. This is useful for fields that contain longer strings (i.e. body text in a blog post). TF-IDF is used to search fields structured with the `CONTAINS` type.
 - `GSI_INDEX_STRATEGIES.NUMERIC`: Creates several buckets to allow for efficient search of numeric values, especially values with high cardinality.
 - `GSI_INDEX_STRATEGIES.FLAT`: Stores the field as the data type it is. A flat index is created of values that are not strings or numbers. This is the default. For example, if you are indexing document titles and don't need to do a `starts_with` query, you may choose a flat index to allow for efficient `equals` and `contains` queries.
 - `GSI_INDEX_STRATEGIES.PREFIX`: Creates a trie index for the field. This is useful for fields that contain short strings (i.e. titles).
@@ -205,6 +205,7 @@ The script score feature supports the following mathematical operations:
 - `*` (multiplication)
 - `/` (division)
 - `log` (logarithm)
+- `decay` (timeseries decay)
 
 You can apply a script score at the top level of your query:
 
@@ -246,6 +247,18 @@ Invalid forms of this query include:
 
 - `post + title * 2` (missing parentheses)
 - `(post + title * 2)` (terms can only include one operator)
+
+The `decay` function lets you decay a value by `0.9 ** days_since_post / 30`. This is useful for gradually decreasing the rank for older documents as time passes. This may be particularly useful if you are working with data where you want more recent documents to be ranked higher. `decay` only works with timeseries.
+
+Here is an example of `decay` in use:
+
+```
+(_score * decay published)
+```
+
+This will apply the `decay` function to the `published` field.
+
+Data must be stored as a Python `datetime` object for the `decay` function to work.
 
 ### Condition matching
 
