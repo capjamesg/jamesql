@@ -36,47 +36,49 @@ OPERATOR_MAP = {
     "<=": "less_than_or_equal",
 }
 
+
 class QuerySimplifier(Transformer):
     def __init__(self):
         self.terms = []
 
     def WORD(self, items):
         return items.value
-    
+
     def word_query(self, items):
         self.terms.append(items[0])
         return items[0]
-    
+
     def field_query(self, items):
         return items[0]
-    
+
     def query_component(self, items):
         return items[0]
-    
+
     def query(self, items):
         return items[0]
 
     def or_query(self, items):
         self.terms.append([items[0], "OR", items[1]])
         return items[0]
-    
+
     def start(self, items):
         return items[0]
-    
+
     def field_query(self, items):
         self.terms.append(items[0] + ":" + items[1])
         return items[0] + ":" + items[1]
-    
+
     def TERM(self, items):
         return items.value
-    
+
     def negate_query(self, items):
         if items[0] in self.terms:
             self.terms.remove(items[0])
 
         self.terms.append(["NOT", items[0]])
-        
+
         return items[0]
+
 
 class QueryRewriter(Transformer):
     def __init__(self, default_strategies=None, query_keys=None):
@@ -90,7 +92,7 @@ class QueryRewriter(Transformer):
             return "wildcard"
 
         return default
-    
+
     def ORDER(self, items):
         return items.value
 
@@ -105,7 +107,7 @@ class QueryRewriter(Transformer):
 
     def query_component(self, items):
         return {"and": items}
-    
+
     def sort_component(self, items):
         result = {"sort_by": items[0]}
 
@@ -198,13 +200,12 @@ class QueryRewriter(Transformer):
 
         return items.value
 
+
 def simplify_string_query(parser, query):
     # remove punctuation not in grammar
     query = re.sub(r"[^a-zA-Z0-9_.,!?*:\-'<>=\[\] ]", "", query)
 
     tree = parser.parse(query)
-
-    print(tree.pretty())
 
     result = QuerySimplifier()
     result.transform(tree.copy())
@@ -213,6 +214,7 @@ def simplify_string_query(parser, query):
     query = " ".join(query).strip()
 
     return query
+
 
 def string_query_to_jamesql(query, query_keys, default_strategies={}):
     parser = Lark(grammar)

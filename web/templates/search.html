@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JameSQL Query Experimentation Tool</title>
+
+    <script src="/ace-builds/src-noconflict/ace.js" type="text/javascript" charset="utf-8"></script>
+
+    <style>
+        :root {
+            --primary-color: royalblue;
+        }
+        html {
+            border-top: 0.5em solid var(--primary-color);
+        }
+        body {
+            font-family: Helvetica, sans-serif;
+            display: grid;
+            grid-template-columns: 2fr 7fr;
+            grid-gap: 2em;
+            grid-template-areas: "aside main";
+            padding-top: 0;
+
+        }
+        aside {
+            padding-left: 1em;
+            padding-right: 1em;
+            border-right: 1px solid #ccc;
+            height: 100vh;
+            overflow-y: auto;
+        }
+        textarea, input {
+            box-sizing: border-box;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-width: 50em;
+            overflow-x: auto;
+            background-color: #f8f9fa;
+            padding: 1em;
+            border-radius: 0.5em;
+        }
+        a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        #editor, #preview {
+            width: 100%;
+            height: 100%;
+            border: 1px solid #ccc;
+            margin: 0;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.5em 1em;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0069d9;
+        }
+        button:focus {
+            background-color: yellow;
+            color: black;
+        }
+        .show-on-mobile {
+            display: none;
+        }
+        @media (max-width: 768px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+            section {
+                min-height: 25vh;
+            }
+            .show-on-mobile {
+                display: block;
+            }
+        }
+        label {
+            font-weight: 600;
+            margin-bottom: 0.5em;
+            margin-top: 1em;
+            display: block;
+        }
+        .search-box {
+            display: grid;
+            grid-template-columns: 3fr 0.01fr 1fr;
+            grid-gap: 1em;
+            margin-top: 1em;
+        }
+        input[type="text"] {
+            width: 100%;
+            font-size: 1em;
+            border-radius: 0.5em;
+            border: 0.1em solid lightgrey;
+            padding: 0.5em;
+        }
+        button {
+            border-radius: 0.5em;
+            cursor: pointer;
+            outline: none;
+            font-size: 1em;
+            border: 0.1em solid lightgrey;
+        }
+        button:hover {
+            background-color: rgb(208, 208, 208);
+            color: black;
+        }
+        button:focus {
+            background-color: rgb(255, 225, 116);
+            color: black;
+            font-weight: 600;
+            outline: none;
+        }
+        input[type="text"]:focus {
+            background-color: rgb(255, 225, 116);
+            border: 0.1em solid lightgrey;
+            outline: none;
+        }
+        ul {
+            padding: 0;
+        }
+        ul li {
+            list-style-type: none;
+            margin-bottom: 1em;
+        }
+        select {
+            width: 100%;
+            font-size: 1em;
+            border-radius: 0.5em;
+            border: 0.1em solid lightgrey;
+            padding: 0.5em;
+        }
+        textarea {
+            width: 100%;
+            font-size: 1em;
+            border-radius: 0.5em;
+            border: 0.1em solid lightgrey;
+            padding: 0.5em;
+            height: 5em;
+        }
+        @media (max-width: 768px) {
+            body {
+                grid-template-areas: "main" "aside";
+                grid-template-columns: 1fr;
+            }
+            aside {
+                order: 2;
+                border-top: 1px solid #ccc;
+                border-right: none;
+                padding-top: 1em;
+                padding-left: 1em;
+                padding-right: 1em;
+            }
+            
+        }
+    </style>
+
+    <link rel="icon" href="https://jamesg.blog/favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <aside>
+        <section>
+            <h1><img src="https://jamesg.blog/assets/mascot.svg" height="25" style="margin-bottom: -5px; margin-right: 0.5em;" /> JameSQL</h1>
+            <form>
+                <label>Ranking algorithm:</label>
+                <textarea id="ranking">(_score + log (inlinks))</textarea>
+                <br>
+                <label>Query type:</label>
+                <select id="query_type">
+                    <option value="json_query">JSON</option>
+                    <option value="string_query">String</option>
+                </select>
+                <label>Fields to search:</label>
+                <input type="text" id="fields" value="{% for field in field_names %}{{ field }}{% if not loop.last %}, {% endif %}{% endfor %}">
+                <br>
+                <label>Keyword operator:</label>
+                <select id="operator">
+                    <option value="and">AND</option>
+                    <option value="or">OR</option>
+                </select>
+                <label>Sort by:</label>
+                <select id="sort_by">
+                    <option value="_score">_score</option>
+                    {% for field in field_names %}
+                        <option value="{{ field }}">{{ field }}</option>
+                    {% endfor %}
+                </select>
+                <label>Highlight matching terms (strict search):</label>
+                <input type="checkbox" id="highlight_matching_terms" value="false">
+                <label>Show all data:</label>
+                <input type="checkbox" id="show_all_data" value="true">
+                <br><br>
+                <details>
+                    <summary>Advanced</summary>
+                    <h3>Boosts</h3>
+                    {% for field in field_names %}
+                        <label>{{ field }}</label>
+                        <input type="text" id="boost_{{ field }}" value="1">
+                    {% endfor %}
+                    <h3>Indexed Fields</h3>
+                    <ul>
+                        {% for field in field_names %}
+                            <li>{{ field }}: {{ field_names[field] }}</li>
+                        {% endfor %}
+                    </ul>
+                    <div id="computed_query"></div>
+                </details>
+            </form>
+        </section>
+    </aside>
+    <section>
+        <div class="search-box">
+            <input autocomplete="off" id="q" name="q" placeholder="Search..." type="text">
+            <span></span>
+            <button type="submit">Search</button>
+        </div>
+        <section>
+            <h2>Results</h2>
+            <ul id="results"></ul>
+        </section>
+    </section>
+    <script>
+        // if ?q= is in the URL, set the search input value to the query
+        var urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('q')) {
+            document.querySelector('input[name="q"]').value = urlParams.get('q');
+            submit();
+        }
+        // add listener
+        document.querySelector('button[type="submit"]').addEventListener('click', submit);
+    
+        // if enter is pressed, submit the form
+        document.querySelector('input[name="q"]').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                submit();
+            }
+        });
+    
+        // if enter pressed on button
+        document.querySelector('button[type="submit"]').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                submit();
+            }
+        });
+
+        // if show all data is clicked, resubmit query
+        document.querySelector('#show_all_data').addEventListener('click', function () {
+            submit();
+        });
+
+        // if highlight matching terms is clicked, resubmit query
+        document.querySelector('#highlight_matching_terms').addEventListener('click', function () {
+            submit();
+        });
+
+        // if query type changed to string, hide keyword operator, boosts, and highlights
+        document.querySelector('#query_type').addEventListener('change', function () {
+            if (document.querySelector('#query_type').value === 'string_query') {
+                document.querySelector('#operator').style.display = 'none';
+                document.querySelector('#highlight_matching_terms').style.display = 'none';
+                document.querySelector('#boost').style.display = 'none';
+            } else {
+                document.querySelector('#operator').style.display = 'block';
+                document.querySelector('#highlight_matching_terms').style.display = 'block';
+                document.querySelector('#boost').style.display = 'block';
+            }
+        });
+        
+        function submit() {
+            var query = document.querySelector('input[name="q"]').value;
+            var start = 0;
+    
+            if (urlParams.has('page')) {
+                start = (urlParams.get('page') - 1) * 10;
+            }
+    
+            function toTitleCase(str) {
+              return str.replace(
+                /\w\S*/g,
+                text => text.charAt(0).toUpperCase() + text.substring(1).toLowerCase()
+              );
+            }
+    
+            // update page url to ?q={query}&page={page}, without reloading the page or adding to history
+            var newUrl = window.location.protocol + '//' + window.location.host + window.location.pathname + '?q=' + query + '&page=' + (start / 10 + 1);
+            window.history.pushState({ path: newUrl }, '', newUrl);
+
+            var query_json = [];
+
+            for (var field of document.querySelector('#fields').value.split(',')) {
+                var record = {[field.trim()]: {"contains": query}};
+
+                if (document.querySelector('#boost_' + field.trim()).value !== '1') {
+                    record[field.trim()]['boost'] = document.querySelector('#boost_' + field.trim()).value;
+                }
+
+                if (document.querySelector('#highlight_matching_terms').checked) {
+                    record[field.trim()]['highlight'] = true;
+                    record[field.trim()]['strict'] = true;
+                }
+                query_json.push(record);
+            }
+
+            // if press /, focus on search field
+            document.addEventListener('keydown', function (e) {
+                if (e.key === '/') {
+                    document.querySelector('input[name="q"]').focus();
+                    // clear the input
+                    document.querySelector('input[name="q"]').value = '';
+                    e.preventDefault();
+                }
+            });
+    
+            fetch('http://localhost:5000', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    query: {
+                        [document.querySelector('#operator').value]: query_json
+                    },
+                    raw_query: document.querySelector('input[name="q"]').value,
+                    start: start,
+                    query_score: document.querySelector('#ranking').value,
+                    sort_by: document.querySelector('#sort_by').value,
+                    highlight: true,
+                    highlight_stride: 10,
+                    type: document.querySelector('#query_type').value,
+                    fields: document.querySelector('#fields').value.split(',').map(field => field.trim())
+                })
+            }).then(response => response.json())
+            .then(data => {
+                // add query json to pre in computed query
+                var computed_query = document.querySelector('#computed_query');
+                computed_query.innerHTML = '<h3>Computed Query</h3>';
+                var pre = document.createElement('pre');
+                pre.textContent = JSON.stringify({
+                    query: {
+                        [document.querySelector('#operator').value]: query_json
+                    },
+                    start: start,
+                    query_score: document.querySelector('#ranking').value,
+                    sort_by: document.querySelector('#sort_by').value,
+                }, null, 2);
+                computed_query.appendChild(pre);
+
+                var list = document.querySelector('#results');
+                list.innerHTML = '';
+    
+                if (data.documents.length === 0) {
+                    var li = document.createElement('li');
+                    li.textContent = 'No results found.';
+                    list.appendChild(li);
+                    return;
+                }
+                
+                var results_count = data.total_results;
+                var query_time = data.query_time;
+    
+                var li = document.createElement('li');
+    
+                li.textContent = `Found ${results_count} result${results_count === 1 ? '' : 's'}. Viewing page ${start / 10 + 1} of ${Math.ceil(results_count / 10)}. Query took ${query_time}ms.`;
+    
+                li.style.marginBottom = '1em';
+                list.appendChild(li);
+    
+                data.documents.forEach(article => {
+                    var li = document.createElement('li');
+                    li.classList.add('h-entry', 'list_entry');
+    
+                    var h3 = document.createElement('h3');
+                    h3.classList.add('p-name');
+                    var a = document.createElement('a');
+                    a.href = article.url;
+
+                    a.textContent = article.title + ' - ' + article._score.toFixed(3);
+                    h3.appendChild(a);
+
+                    // add pre with full json
+                    var articleElement = document.createElement('pre');
+                    // iterate over all keys; if len > 20 words, add ...
+                    var keys = Object.keys(article);
+                    keys.forEach(key => {
+                        var value = article[key];
+                        if (typeof value === 'string') {
+                            if (value.split(' ').length > 20) {
+                                article[key] = value.split(' ').slice(0, 20).join(' ') + '...';
+                            }
+                        }
+                    });
+                    
+                    articleElement.textContent = JSON.stringify(article, null, 2);
+    
+                    li.appendChild(h3);
+                    // if highlight, add list
+                    if (article._context && article._context.length > 0) {
+                        var ul = document.createElement('ul');
+                        for (var key in article._context.slice(0, 3)) {
+                            var nli = document.createElement('li');
+                            nli.style.marginBottom = '1em';
+                            nli.innerHTML = article._context[key];
+                            nli.style.listStyleType = 'disc';
+                            nli.style.marginLeft = '1em';
+                            ul.appendChild(nli);
+
+                            // surround matching words with mark regex
+                            console.log(query);
+                            var regex = new RegExp(query, 'gi');
+                            var text = nli.textContent;
+                            nli.innerHTML = text.replace(regex, '<mark>$&</mark>');
+                        }
+                        li.appendChild(ul);
+
+                        // add ... if needed
+                        if (article._context.length > 3) {
+                            var span = document.createElement('span');
+                            span.textContent = '...';
+                            span.style.marginRight = '1em';
+                            li.appendChild(span);
+                        }
+                    }
+
+                    if (document.querySelector('#show_all_data').checked) {
+                        li.appendChild(articleElement);
+                    }
+    
+                    list.appendChild(li);
+                });
+                
+                if (results_count > 10) {
+                    var li = document.createElement('li');
+                    var pages = Math.ceil(results_count / 10);
+                    var ellipsis = false;
+                    for (var i = 1; i <= pages; i++) {
+                        // if i == 1 or i == len(pages), always show
+                        // otherwise, only show next and previous 2 pages
+                        if (i != 1 && i != pages) {
+                            if (i < start / 10 - 2 || i > start / 10 + 2) {
+                                ellipsis = true;
+                                continue;
+                            }
+                        }
+                        if (ellipsis) {
+                            var span = document.createElement('span');
+                            span.textContent = '...';
+                            span.style.marginRight = '1em';
+                            li.appendChild(span);
+                            ellipsis = false;
+                        }
+                        var a = document.createElement('a');
+                        a.href = `?q=${query}&page=${i}`;
+                        // if ?page= is in the URL, set the search input value to the query
+                        if (urlParams.has('page')) {
+                            if (urlParams.get('page') == i) {
+                                a.style.fontWeight = '600';
+                            }
+                        }
+                        a.textContent = `Page ${i}`;
+                        a.style.marginRight = '1em';
+                        li.appendChild(a);
+                    }
+                    list.appendChild(li);
+                }
+    
+                // if page > 1 and results count == 0, redirect to page 1
+                if (results_count == 0 && start > 0) {
+                    window.location.href = `?q=${query}&page=1`;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                var list = document.querySelector('#results');
+                list.innerHTML = '';
+                var li = document.createElement('li');
+                li.innerHTML = `<p>There was an error searching for "${query}". If this error persists, please email <a href="mailto:readers@jamesg.blog">readers@jamesg.blog</a>.</p>`;
+                list.appendChild(li);
+            });
+        }
+    </script>
+</body>
+</html>

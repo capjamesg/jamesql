@@ -1,16 +1,19 @@
 import math
 
 from lark import Transformer
+import datetime
 
 grammar = """
 start: query
 
-query: "(" query OPERATOR query ")" | logarithm | WORD
-logarithm: LOGARITHM query
+query: decay | "(" query OPERATOR query ")" | logarithm | FLOAT | WORD
+logarithm: LOGARITHM "(" query ")"
 OPERATOR: "+" | "-" | "*" | "/"
 LOGARITHM: "log"
+decay: "decay" WORD
 
 WORD: /[a-zA-Z0-9_]+/
+FLOAT: /[0-9]+(\.[0-9]+)?/
 
 %import common.WS
 %ignore WS
@@ -41,16 +44,28 @@ class JameSQLScriptTransformer(Transformer):
         return operator_command(left, right)
 
     def logarithm(self, items):
-        return math.log(items[1])
+        # + 0.1 removes the possibility of log(0)
+        # which would return a math domain error
+        return math.log(items[1] + 0.1)
 
     def start(self, items):
         return items[0]
+
+    def decay(self, items):
+        # decay by half for every 30 days
+        # item is datetime.dateime object
+        days_since_post = (datetime.datetime.now() - items[0]).days
+
+        return 0.9 ** (days_since_post / 30)
 
     def WORD(self, items):
         if items.value.isdigit():
             return float(items.value)
 
         return self.document[items.value]
+
+    def FLOAT(self, items):
+        return float(items.value)
 
     def OPERATOR(self, items):
         return items.value

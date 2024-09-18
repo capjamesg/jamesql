@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        :root {
+            --step--2: clamp(0.6944rem, 0.6856rem + 0.0444vw, 0.72rem);
+            --step--1: clamp(0.8333rem, 0.8101rem + 0.1159vw, 0.9rem);
+            --step-0: clamp(1rem, 0.9565rem + 0.2174vw, 1.125rem);
+            --step-1: clamp(1.2rem, 1.1283rem + 0.3587vw, 1.4063rem);
+            --step-2: clamp(1.44rem, 1.3295rem + 0.5527vw, 1.7578rem);
+            --step-3: clamp(1.728rem, 1.5648rem + 0.8161vw, 2.1973rem);
+            --step-4: clamp(2.0736rem, 1.8395rem + 1.1704vw, 2.7466rem);
+            --step-5: clamp(2.4883rem, 2.1597rem + 1.6433vw, 3.4332rem);
+            --primary-color: #ff9950;
+        }
+        body, html {
+            padding: 0;
+            font-size: var(--step-0);
+            font-family: 'Helvetica', sans-serif;
+        }
+        html {
+            border-top: 0.25em solid var(--primary-color);
+        }
+        main {
+            margin: auto;
+            max-width: 40em;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>JameSQL</h1>
+        <p>Fast, in-memory search.</p>
+    </main>
+</body>
+</html>
