@@ -726,7 +726,7 @@ class JameSQL:
 
         for doc in results:
             doc["_context"] = []
-            doc["_score"] = 1
+            doc["_score"] = 0
 
         return response
 
