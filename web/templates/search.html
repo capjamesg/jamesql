@@ -321,8 +321,14 @@
                     e.preventDefault();
                 }
             });
+
+            var boosts = {};
+
+            for (var field of document.querySelector('#fields').value.split(',')) {
+                boosts[field.trim()] = document.querySelector('#boost_' + field.trim()).value;
+            }
     
-            fetch('http://localhost:5000', {
+            fetch('http://127.0.0.1:5000', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -338,7 +344,8 @@
                     highlight: true,
                     highlight_stride: 10,
                     type: document.querySelector('#query_type').value,
-                    fields: document.querySelector('#fields').value.split(',').map(field => field.trim())
+                    fields: document.querySelector('#fields').value.split(',').map(field => field.trim()),
+                    boosts: boosts
                 })
             }).then(response => response.json())
             .then(data => {
@@ -375,6 +382,13 @@
     
                 li.style.marginBottom = '1em';
                 list.appendChild(li);
+
+                // if result.answer, add text
+                if (data.answer) {
+                    var li = document.createElement('li');
+                    li.innerHTML = `<p><strong>Answer:</strong> ${data.answer}</p>`;
+                    list.appendChild(li);
+                }
     
                 data.documents.forEach(article => {
                     var li = document.createElement('li');
