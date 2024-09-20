@@ -168,9 +168,9 @@ class JameSQL:
                 index[word]["documents"]["uuid"][document["uuid"]].append(pos)
                 index[word]["documents"]["count"][document["uuid"]] += 1
 
-            index[document[index_by]]["count"] += 1
-            index[document[index_by]]["documents"]["uuid"][document["uuid"]].append(pos)
-            index[document[index_by]]["documents"]["count"][document["uuid"]] += 1
+                index[document[index_by]]["count"] += 1
+                index[document[index_by]]["documents"]["uuid"][document["uuid"]].append(pos)
+                index[document[index_by]]["documents"]["count"][document["uuid"]] += 1
 
         return index
 

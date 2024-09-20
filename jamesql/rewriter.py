@@ -15,12 +15,13 @@ sort_component: "sort:" TERM (ORDER)?
 strict_search_query: "'" MULTI_WORD "'"
 comparison: TERM OPERATOR WORD
 range_query: TERM "[" WORD "," WORD "]"
-word_query: WORD
+word_query: WORD ("^" FLOAT)?
 field_query: TERM ":" "'" MULTI_WORD "'" | TERM ":" WORD | TERM ":" DOUBLE_QUOTE MULTI_WORD DOUBLE_QUOTE
 negate_query: "-" (strict_search_query | word_query | field_query | comparison | range_query)
 OPERATOR: ">" | "<" | ">=" | "<="
 DOUBLE_QUOTE: "\\""
-WORD: /[a-zA-Z0-9_.!?*-]+/
+WORD: /[a-zA-Z0-9_!?*-]+/
+FLOAT: /[0-9]+(\.[0-9]+)?/
 MULTI_WORD: /[a-zA-Z0-9 ]+/
 TERM: /[a-zA-Z0-9_]+/
 ORDER: "ASC" | "DESC" | "asc" | "desc"
@@ -43,10 +44,13 @@ class QuerySimplifier(Transformer):
 
     def WORD(self, items):
         return items.value
+    
+    def FLOAT(self, items):
+        return items.value
 
     def word_query(self, items):
-        self.terms.append(items[0])
-        return items[0]
+        self.terms.append("^".join(items))
+        return "^".join(items)
 
     def field_query(self, items):
         return items[0]
@@ -79,7 +83,6 @@ class QuerySimplifier(Transformer):
 
         return items[0]
 
-
 class QueryRewriter(Transformer):
     def __init__(self, default_strategies=None, query_keys=None, boosts={}):
         self.indexing_strategies = default_strategies
@@ -95,6 +98,9 @@ class QueryRewriter(Transformer):
         return default
 
     def ORDER(self, items):
+        return items.value
+    
+    def FLOAT(self, items):
         return items.value
 
     def or_query(self, items):
@@ -177,6 +183,10 @@ class QueryRewriter(Transformer):
         for key in self.query_keys:
             field = key
             value = items[0]
+            if len(items) > 1:
+                boost = items[1]
+            else:
+                boost = 1
 
             if self.indexing_strategies.get(field) == "NUMERIC":
                 continue
@@ -185,7 +195,7 @@ class QueryRewriter(Transformer):
                 {
                     field: {
                         self.get_query_strategy(field, value): value,
-                        "boost": self.boosts.get(field, 1),
+                        "boost": self.boosts.get(field, boost),
                     }
                 }
             )
@@ -211,7 +221,7 @@ class QueryRewriter(Transformer):
 
 def simplify_string_query(parser, query):
     # remove punctuation not in grammar
-    query = re.sub(r"[^a-zA-Z0-9_.,!?*:\-'<>=\[\] ]", "", query)
+    query = re.sub(r"[^a-zA-Z0-9_.,!?^*:\-'<>=\[\] ]", "", query)
 
     tree = parser.parse(query)
 
