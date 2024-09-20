@@ -6,6 +6,7 @@ import uuid
 from collections import defaultdict
 from enum import Enum
 from typing import Dict, List
+from copy import deepcopy
 
 import orjson
 import pybmoore
@@ -259,7 +260,9 @@ class JameSQL:
         else:
             return self.autosuggest_index.keys(prefix=query.lower())[0:limit]
 
-    def _compute_string_query(self, query: str, query_keys: list = []) -> List[str]:
+    def _compute_string_query(
+        self, query: str, query_keys: list = [], boosts={}
+    ) -> List[str]:
         """
         Accepts a string query and returns a list of matching documents.
         """
@@ -270,7 +273,10 @@ class JameSQL:
         indexing_strategies = {name: gsi["strategy"] for name, gsi in self.gsis.items()}
 
         query = string_query_to_jamesql(
-            query, query_keys=query_keys, default_strategies=indexing_strategies
+            query,
+            query_keys=query_keys,
+            default_strategies=indexing_strategies,
+            boosts=boosts,
         )
 
         return query
@@ -716,11 +722,13 @@ class JameSQL:
         # recursively returns scores and highlights in a `metadata`-type field
         # in _recursively_parse_query
 
-        # for doc in results:
-        #     doc["_context"] = []
-        #     doc["_score"] = 1
+        response = deepcopy(result)
 
-        return result
+        for doc in results:
+            doc["_context"] = []
+            doc["_score"] = 1
+
+        return response
 
     def _get_query_conditions(self, query_tree):
         first_key = list(query_tree.keys())[0]
@@ -979,12 +987,12 @@ class JameSQL:
                                 all_matches[current_word] = matches_for_this_word
                                 all_match_positions[current_word] = match_positions
                             else:
-                                all_matches[current_word + " " + next_word] = (
-                                    matches_for_this_word
-                                )
-                                all_match_positions[current_word + " " + next_word] = (
-                                    match_positions
-                                )
+                                all_matches[
+                                    current_word + " " + next_word
+                                ] = matches_for_this_word
+                                all_match_positions[
+                                    current_word + " " + next_word
+                                ] = match_positions
 
                         if all_matches:
                             matching_documents = list(
@@ -1045,7 +1053,6 @@ class JameSQL:
                                 # matching_document_scores.update(
                                 #     {uuid_of_document: count}
                                 # )
-                                # print(gsi[word]["count"])
                                 document_term_frequency = (
                                     gsi[word]["documents"]["count"][uuid_of_document]
                                     / self.doc_lengths[uuid_of_document][query_field]
@@ -1123,7 +1130,7 @@ class JameSQL:
 
             doc["_score"] = matching_document_scores.get(doc["uuid"], 1) * float(
                 boost_factor
-            )
+            ) + doc.get("_score", 0)
 
             if doc.get("_context") is None:
                 doc["_context"] = []

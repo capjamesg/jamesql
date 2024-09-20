@@ -7,7 +7,7 @@ from .query_simplifier import simplifier
 grammar = """
 start: (query)+ sort_component?
 
-or_query: (query ("OR" | "or") query)*
+or_query: (query ("OR ") query)*
 query:  or_query | query_component
 query_component: (negate_query | range_query | strict_search_query | word_query | field_query | comparison)+
 
@@ -81,9 +81,10 @@ class QuerySimplifier(Transformer):
 
 
 class QueryRewriter(Transformer):
-    def __init__(self, default_strategies=None, query_keys=None):
+    def __init__(self, default_strategies=None, query_keys=None, boosts={}):
         self.indexing_strategies = default_strategies
         self.query_keys = query_keys
+        self.boosts = boosts
 
     def get_query_strategy(self, key="", value=""):
         default = "contains"
@@ -180,7 +181,14 @@ class QueryRewriter(Transformer):
             if self.indexing_strategies.get(field) == "NUMERIC":
                 continue
 
-            result.append({field: {self.get_query_strategy(field, value): value}})
+            result.append(
+                {
+                    field: {
+                        self.get_query_strategy(field, value): value,
+                        "boost": self.boosts.get(field, 1),
+                    }
+                }
+            )
 
         return {"or": result}
 
@@ -216,7 +224,7 @@ def simplify_string_query(parser, query):
     return query
 
 
-def string_query_to_jamesql(query, query_keys, default_strategies={}):
+def string_query_to_jamesql(query, query_keys, default_strategies={}, boosts={}):
     parser = Lark(grammar)
 
     query = simplify_string_query(parser, query)
@@ -227,7 +235,7 @@ def string_query_to_jamesql(query, query_keys, default_strategies={}):
     tree = parser.parse(query)
 
     rewritten_query = QueryRewriter(
-        default_strategies=default_strategies, query_keys=query_keys
+        default_strategies=default_strategies, query_keys=query_keys, boosts=boosts
     ).transform(tree)
 
     return rewritten_query
