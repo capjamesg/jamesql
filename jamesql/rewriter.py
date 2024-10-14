@@ -1,7 +1,8 @@
 import re
 
-from lark import Lark, Transformer
+from lark import   Lark, Transformer
 from lark.visitors import Visitor, Interpreter
+
 from .query_simplifier import simplifier
 
 grammar = """
@@ -16,7 +17,7 @@ strict_search_query: "'" MULTI_WORD "'"
 comparison: TERM OPERATOR WORD
 range_query: TERM "[" WORD "," WORD "]"
 word_query: WORD ("^" FLOAT)?
-field_query: TERM ":" "'" MULTI_WORD "'" | TERM ":" WORD | TERM ":" DOUBLE_QUOTE MULTI_WORD DOUBLE_QUOTE
+field_query: TERM ":" ("'" MULTI_WORD "'" | WORD | DOUBLE_QUOTE MULTI_WORD DOUBLE_QUOTE)
 negate_query: "-" (strict_search_query | word_query | field_query | comparison | range_query)
 OPERATOR: ">" | "<" | ">=" | "<="
 DOUBLE_QUOTE: "\\""

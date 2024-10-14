@@ -6,6 +6,7 @@ import uuid
 from collections import defaultdict
 from enum import Enum
 from typing import Dict, List
+from functools import lru_cache
 from copy import deepcopy
 
 import orjson
@@ -14,6 +15,7 @@ import pygtrie
 import hashlib
 from BTrees.OOBTree import OOBTree
 from lark import Lark
+
 import math
 
 from jamesql.rewriter import string_query_to_jamesql, grammar as rewriter_grammar
@@ -55,6 +57,10 @@ class RANKING_STRATEGIES(Enum):
 
 JAMESQL_SCRIPT_SCORE_PARSER = Lark(grammar)
 
+@lru_cache()
+def parse_script_score(query: str) -> dict:
+    return JAMESQL_SCRIPT_SCORE_PARSER.parse(query)
+
 QUERY_TYPE_COMPARISON_METHODS = {
     "greater_than": lambda query_term, gsi: [
         doc_uuid for doc_uuid in gsi.values(min=query_term, excludemin=True)
@@ -87,7 +93,7 @@ class JameSQL:
         self.doc_lengths = defaultdict(dict)
         self.autosuggest_on = None
         self.word_counts = defaultdict(int)
-        self.string_query_parser = Lark(rewriter_grammar, parser="earley")
+        self.string_query_parser = Lark(rewriter_grammar, parser="earley", propagate_positions=False, maybe_placeholders=False)
 
     def __len__(self):
         return len(self.global_index)
@@ -680,7 +686,7 @@ class JameSQL:
             results = sorted(results, key=lambda x: x.get("_score", 1), reverse=True)
 
         if query.get("query_score"):
-            tree = JAMESQL_SCRIPT_SCORE_PARSER.parse(query["query_score"])
+            tree = parse_script_score(query["query_score"])
 
             for document in results:
                 if document.get("_score") is None:

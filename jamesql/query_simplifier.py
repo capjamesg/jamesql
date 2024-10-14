@@ -6,7 +6,6 @@ def normalize_operator_query(t):
 
 
 def simplifier(terms):
-    print(terms)
     new_terms = []
     outer_terms = set()
     to_remove = set()
