@@ -846,7 +846,7 @@ class JameSQL:
         word_counts = {word: self.word_counts.get(word, 0) for word in query_terms}
 
         for word, count in word_counts.items():
-            if count > log_doc_count:
+            if count > log_doc_count or word == query_term:
                 final_query_terms.append(word)
 
         return final_query_terms
@@ -896,7 +896,12 @@ class JameSQL:
         query_terms = [query_term]
 
         if fuzzy:
-            query_terms = self._turn_query_into_fuzzy_options(query_term)
+            final_query_terms = []
+
+            for query_term in query_terms:
+                final_query_terms.extend(self._turn_query_into_fuzzy_options(query_term))
+
+            query_terms = final_query_terms
 
         if query_type == "wildcard":
             # replace * with every possible character
