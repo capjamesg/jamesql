@@ -285,7 +285,7 @@ class JameSQL:
 
         indexing_strategies = {name: gsi["strategy"] for name, gsi in self.gsis.items()}
 
-        query = string_query_to_jamesql(
+        query, spelling_substitutions = string_query_to_jamesql(
             self.string_query_parser,
             query,
             query_keys=query_keys,
@@ -295,7 +295,7 @@ class JameSQL:
             correct_spelling_index=self
         )
 
-        return query
+        return query, spelling_substitutions
 
     def string_query_search(
         self, query: str, query_keys: list = [], start: int = 0, fuzzy = False
@@ -304,12 +304,17 @@ class JameSQL:
         Accepts a string query and returns a list of matching documents.
         """
 
-        query = self._compute_string_query(query, query_keys, fuzzy=fuzzy)
+        query, spelling_substitutions = self._compute_string_query(query, query_keys, fuzzy=fuzzy)
 
         if start:
             query["skip"] = start
 
-        return self.search(query)
+        result = self.search(query)
+
+        if spelling_substitutions:
+            result["spelling_substitutions"] = spelling_substitutions
+
+        return result
 
     def _get_unique_record_count(self, documents: list) -> int:
         """

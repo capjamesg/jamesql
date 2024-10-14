@@ -231,19 +231,27 @@ def simplify_string_query(parser, query, correct_spelling_index = None):
     query = simplifier(result.terms)
     query = " ".join(query).strip()
 
+    spelling_substitutions = {}
+
     if correct_spelling_index is not None:
         final_query = ""
 
         for word in query.split():
             final_query += correct_spelling_index.spelling_correction(word) + " "
 
+        spelling_substitutions = {
+            word: correct_spelling_index.spelling_correction(word)
+            for word in query.split()
+            if word != correct_spelling_index.spelling_correction(word)
+        }
+
         query = final_query.strip()
 
-    return query
+    return query, spelling_substitutions
 
 
 def string_query_to_jamesql(parser, query, query_keys, default_strategies={}, boosts={}, fuzzy = False, correct_spelling_index = None):
-    query = simplify_string_query(parser, query, correct_spelling_index)
+    query, spelling_substitutions = simplify_string_query(parser, query, correct_spelling_index)
 
     if query.strip() == "":
         return {"query": {}}
@@ -254,4 +262,4 @@ def string_query_to_jamesql(parser, query, query_keys, default_strategies={}, bo
         default_strategies=default_strategies, query_keys=query_keys, boosts=boosts, fuzzy=fuzzy
     ).transform(tree)
 
-    return rewritten_query
+    return rewritten_query, spelling_substitutions
