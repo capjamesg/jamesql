@@ -847,7 +847,7 @@ class JameSQL:
             if count > log_doc_count:
                 final_query_terms.append(word)
 
-        return query_terms
+        return final_query_terms
 
     def _run(self, query: dict, query_field: str) -> List[str]:
         """
