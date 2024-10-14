@@ -261,7 +261,7 @@ class JameSQL:
             return self.autosuggest_index.keys(prefix=query.lower())[0:limit]
 
     def _compute_string_query(
-        self, query: str, query_keys: list = [], boosts={}
+        self, query: str, query_keys: list = [], boosts={}, fuzzy = False
     ) -> List[str]:
         """
         Accepts a string query and returns a list of matching documents.
@@ -277,18 +277,19 @@ class JameSQL:
             query_keys=query_keys,
             default_strategies=indexing_strategies,
             boosts=boosts,
+            fuzzy=fuzzy,
         )
 
         return query
 
     def string_query_search(
-        self, query: str, query_keys: list = [], start: int = 0
+        self, query: str, query_keys: list = [], start: int = 0, fuzzy = False
     ) -> List[str]:
         """
         Accepts a string query and returns a list of matching documents.
         """
 
-        query = self._compute_string_query(query, query_keys)
+        query = self._compute_string_query(query, query_keys, fuzzy=fuzzy)
 
         if start:
             query["skip"] = start

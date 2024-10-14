@@ -84,10 +84,11 @@ class QuerySimplifier(Transformer):
         return items[0]
 
 class QueryRewriter(Transformer):
-    def __init__(self, default_strategies=None, query_keys=None, boosts={}):
+    def __init__(self, default_strategies=None, query_keys=None, boosts={}, fuzzy = False):
         self.indexing_strategies = default_strategies
         self.query_keys = query_keys
         self.boosts = boosts
+        self.fuzzy = fuzzy
 
     def get_query_strategy(self, key="", value=""):
         default = "contains"
@@ -196,6 +197,7 @@ class QueryRewriter(Transformer):
                     field: {
                         self.get_query_strategy(field, value): value,
                         "boost": self.boosts.get(field, boost),
+                        "fuzzy": self.fuzzy,
                     }
                 }
             )
@@ -234,7 +236,7 @@ def simplify_string_query(parser, query):
     return query
 
 
-def string_query_to_jamesql(query, query_keys, default_strategies={}, boosts={}):
+def string_query_to_jamesql(query, query_keys, default_strategies={}, boosts={}, fuzzy = False):
     parser = Lark(grammar)
 
     query = simplify_string_query(parser, query)
@@ -245,7 +247,7 @@ def string_query_to_jamesql(query, query_keys, default_strategies={}, boosts={})
     tree = parser.parse(query)
 
     rewritten_query = QueryRewriter(
-        default_strategies=default_strategies, query_keys=query_keys, boosts=boosts
+        default_strategies=default_strategies, query_keys=query_keys, boosts=boosts, fuzzy=fuzzy
     ).transform(tree)
 
     return rewritten_query
