@@ -834,6 +834,17 @@ class JameSQL:
             [query_term[:i] + query_term[i + 1 :] for i in range(len(query_term))]
         )
 
+        # get unique words
+        final_query_terms = []
+        
+        log_doc_count = math.log(len(self.global_index))
+
+        word_counts = {word: self.word_counts.get(word) for word in query_terms}
+
+        for word, count in word_counts.items():
+            if count > log_doc_count:
+                final_query_terms.append(word)
+
         return query_terms
 
     def _run(self, query: dict, query_field: str) -> List[str]:
