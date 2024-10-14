@@ -216,9 +216,6 @@ class QueryRewriter(Transformer):
         return {field: {self.get_query_strategy(field, value): value}}
 
     def WORD(self, items):
-        if items.value.isdigit():
-            return int(items.value)
-
         return items.value
 
 
