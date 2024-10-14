@@ -197,7 +197,7 @@ class QueryRewriter(Transformer):
                     field: {
                         self.get_query_strategy(field, value): value,
                         "boost": self.boosts.get(field, boost),
-                        "fuzzy": self.fuzzy,
+                        "fuzzy": self.fuzzy if self.get_query_strategy(field, value) == "contains" else False,
                     }
                 }
             )
