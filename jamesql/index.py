@@ -258,7 +258,10 @@ class JameSQL:
 
             return results[0:limit]
         else:
-            return self.autosuggest_index.keys(prefix=query.lower())[0:limit]
+            try:
+                return self.autosuggest_index.keys(prefix=query.lower())[0:limit]
+            except KeyError:
+                return []
 
     def _compute_string_query(
         self, query: str, query_keys: list = [], boosts={}, fuzzy = False
@@ -807,7 +810,7 @@ class JameSQL:
 
     def _turn_query_into_fuzzy_options(self, query_term: str) -> dict:
         query_term = str(query_term).lower()
-        
+
         query_terms = []
 
         # create versions of query where a letter is replaced in every possible position
