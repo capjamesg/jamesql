@@ -16,7 +16,7 @@ from BTrees.OOBTree import OOBTree
 from lark import Lark
 import math
 
-from jamesql.rewriter import string_query_to_jamesql, rewriter_grammar
+from jamesql.rewriter import string_query_to_jamesql, grammar as rewriter_grammar
 
 from .script_lang import JameSQLScriptTransformer, grammar
 
