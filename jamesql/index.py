@@ -87,6 +87,7 @@ class JameSQL:
         self.doc_lengths = defaultdict(dict)
         self.autosuggest_on = None
         self.word_counts = defaultdict(int)
+        self.string_query_parser = Lark(grammar, parser="earley")
 
     def __len__(self):
         return len(self.global_index)
@@ -278,6 +279,7 @@ class JameSQL:
         indexing_strategies = {name: gsi["strategy"] for name, gsi in self.gsis.items()}
 
         query = string_query_to_jamesql(
+            self.string_query_parser,
             query,
             query_keys=query_keys,
             default_strategies=indexing_strategies,

@@ -236,9 +236,7 @@ def simplify_string_query(parser, query):
     return query
 
 
-def string_query_to_jamesql(query, query_keys, default_strategies={}, boosts={}, fuzzy = False):
-    parser = Lark(grammar)
-
+def string_query_to_jamesql(parser, query, query_keys, default_strategies={}, boosts={}, fuzzy = False):
     query = simplify_string_query(parser, query)
 
     if query.strip() == "":
