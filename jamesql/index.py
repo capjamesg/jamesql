@@ -841,7 +841,7 @@ class JameSQL:
         
         log_doc_count = math.log(len(self.global_index))
 
-        word_counts = {word: self.word_counts.get(word) for word in query_terms}
+        word_counts = {word: self.word_counts.get(word, 0) for word in query_terms}
 
         for word, count in word_counts.items():
             if count > log_doc_count:
