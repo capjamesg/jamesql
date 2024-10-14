@@ -516,6 +516,23 @@ class JameSQL:
 
         if query in self.word_counts and self.word_counts[query] > 1:
             return query
+        
+        # generate all possible segmentations
+        # like "coffeeis" -> "coffee is"
+
+        segmentations = {}
+
+        for i in range(1, len(query)):
+            left_word = query[:i]
+            right_word = query[i:]
+
+            if left_word in self.word_counts and right_word in self.word_counts:
+                segmentations[(left_word, right_word)] = self.word_counts[left_word] + self.word_counts[right_word]
+
+        if segmentations:
+            segmentation = max(segmentations, key=segmentations.get)
+
+            return " ".join(segmentation)
 
         fuzzy_suggestions = self._turn_query_into_fuzzy_options(query)
         
