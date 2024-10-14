@@ -16,7 +16,7 @@ from BTrees.OOBTree import OOBTree
 from lark import Lark
 import math
 
-from jamesql.rewriter import string_query_to_jamesql
+from jamesql.rewriter import string_query_to_jamesql, rewriter_grammar
 
 from .script_lang import JameSQLScriptTransformer, grammar
 
@@ -87,7 +87,7 @@ class JameSQL:
         self.doc_lengths = defaultdict(dict)
         self.autosuggest_on = None
         self.word_counts = defaultdict(int)
-        self.string_query_parser = Lark(grammar, parser="earley")
+        self.string_query_parser = Lark(rewriter_grammar, parser="earley")
 
     def __len__(self):
         return len(self.global_index)
