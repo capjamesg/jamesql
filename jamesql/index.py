@@ -805,7 +805,9 @@ class JameSQL:
 
         return acc
 
-    def _turn_query_into_fuzzy_options(self, query_term: dict) -> dict:
+    def _turn_query_into_fuzzy_options(self, query_term: str) -> dict:
+        query_term = str(query_term).lower()
+        
         query_terms = []
 
         # create versions of query where a letter is replaced in every possible position
