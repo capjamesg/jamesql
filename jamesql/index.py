@@ -274,7 +274,7 @@ class JameSQL:
                 return []
 
     def _compute_string_query(
-        self, query: str, query_keys: list = [], boosts={}, fuzzy = False
+        self, query: str, query_keys: list = [], boosts={}, fuzzy = False, highlight_keys = []
     ) -> List[str]:
         """
         Accepts a string query and returns a list of matching documents.
@@ -292,19 +292,22 @@ class JameSQL:
             default_strategies=indexing_strategies,
             boosts=boosts,
             fuzzy=fuzzy,
-            correct_spelling_index=self
+            correct_spelling_index=self,
+            highlight_keys=highlight_keys
         )
+
+        print(query)
 
         return query, spelling_substitutions
 
     def string_query_search(
-        self, query: str, query_keys: list = [], start: int = 0, fuzzy = False
+        self, query: str, query_keys: list = [], start: int = 0, fuzzy = False, highlight_keys = []
     ) -> List[str]:
         """
         Accepts a string query and returns a list of matching documents.
         """
 
-        query, spelling_substitutions = self._compute_string_query(query, query_keys, fuzzy=fuzzy)
+        query, spelling_substitutions = self._compute_string_query(query, query_keys, fuzzy=fuzzy, highlight_keys=highlight_keys)
 
         if start:
             query["skip"] = start
@@ -939,6 +942,7 @@ class JameSQL:
 
         enforce_strict = query["query"][query_field].get("strict", False)
         highlight_terms = query["query"][query_field].get("highlight", False)
+        
         highlight_stride = query["query"][query_field].get("highlight_stride", 10)
 
         if not self.gsis.get(query_field):

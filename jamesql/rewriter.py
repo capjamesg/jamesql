@@ -85,11 +85,12 @@ class QuerySimplifier(Transformer):
         return items[0]
 
 class QueryRewriter(Transformer):
-    def __init__(self, default_strategies=None, query_keys=None, boosts={}, fuzzy = False):
+    def __init__(self, default_strategies=None, query_keys=None, boosts={}, fuzzy = False, highlight_keys = []):
         self.indexing_strategies = default_strategies
         self.query_keys = query_keys
         self.boosts = boosts
         self.fuzzy = fuzzy
+        self.highlight_keys = highlight_keys
 
     def get_query_strategy(self, key="", value=""):
         default = "contains"
@@ -199,6 +200,7 @@ class QueryRewriter(Transformer):
                         self.get_query_strategy(field, value): value,
                         "boost": self.boosts.get(field, boost),
                         "fuzzy": self.fuzzy if self.get_query_strategy(field, value) == "contains" else False,
+                        "highlight": field in self.highlight_keys,
                     }
                 }
             )
@@ -250,7 +252,7 @@ def simplify_string_query(parser, query, correct_spelling_index = None):
     return query, spelling_substitutions
 
 
-def string_query_to_jamesql(parser, query, query_keys, default_strategies={}, boosts={}, fuzzy = False, correct_spelling_index = None):
+def string_query_to_jamesql(parser, query, query_keys, default_strategies={}, boosts={}, fuzzy = False, correct_spelling_index = None, highlight_keys = False):
     query, spelling_substitutions = simplify_string_query(parser, query, correct_spelling_index)
 
     if query.strip() == "":
@@ -259,7 +261,7 @@ def string_query_to_jamesql(parser, query, query_keys, default_strategies={}, bo
     tree = parser.parse(query)
 
     rewritten_query = QueryRewriter(
-        default_strategies=default_strategies, query_keys=query_keys, boosts=boosts, fuzzy=fuzzy
+        default_strategies=default_strategies, query_keys=query_keys, boosts=boosts, fuzzy=fuzzy, highlight_keys=highlight_keys
     ).transform(tree)
 
     return rewritten_query, spelling_substitutions
