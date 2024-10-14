@@ -15,7 +15,7 @@ import pygtrie
 import hashlib
 from BTrees.OOBTree import OOBTree
 from lark import Lark
-
+from nltk.corpus import stopwords
 import math
 
 from jamesql.rewriter import string_query_to_jamesql, grammar as rewriter_grammar
@@ -39,6 +39,7 @@ RESERVED_QUERY_TERMS = ["strict", "boost", "highlight", "highlight_stride"]
 # that can be run in a single query
 MAXIMUM_QUERY_STATEMENTS = 20
 
+stop_words = set(stopwords.words("english"))
 
 class GSI_INDEX_STRATEGIES(Enum):
     PREFIX = "prefix"
@@ -291,6 +292,7 @@ class JameSQL:
             default_strategies=indexing_strategies,
             boosts=boosts,
             fuzzy=fuzzy,
+            correct_spelling_index=self
         )
 
         return query
@@ -500,6 +502,34 @@ class JameSQL:
 
         with open(JOURNAL_FILE, "w") as f:
             f.write("")
+
+    @lru_cache()
+    def spelling_correction(self, query: str) -> str:
+        """
+        Accepts a query and returns a spelling corrected query.
+        """
+
+        if query in self.word_counts and self.word_counts[query] > 1:
+            return query
+
+        fuzzy_suggestions = self._turn_query_into_fuzzy_options(query)
+        
+        fuzzy_suggestions = [word for word in fuzzy_suggestions if word in self.word_counts]
+
+        if fuzzy_suggestions:
+            return max(fuzzy_suggestions, key=self.word_counts.get)
+        
+        fuzzy_suggestions_2_edits = []
+
+        for word in fuzzy_suggestions:
+            fuzzy_suggestions_2_edits.extend(self._turn_query_into_fuzzy_options(word))
+
+        fuzzy_suggestions_2_edits = [word for word in fuzzy_suggestions_2_edits if word in self.word_counts]
+
+        if fuzzy_suggestions_2_edits:
+            return max(fuzzy_suggestions_2_edits, key=self.word_counts.get)
+        
+        return query
 
     def create_gsi(
         self,
@@ -839,23 +869,24 @@ class JameSQL:
                 for c in string.ascii_lowercase
             ]
         )
+
+        # add letter to end of query
+        query_terms.extend([query_term + c for c in string.ascii_lowercase])
+
         # remove a letter from every possible position
         query_terms.extend(
             [query_term[:i] + query_term[i + 1 :] for i in range(len(query_term))]
         )
 
-        # get unique words
-        final_query_terms = []
-        
-        log_doc_count = math.log(len(self.global_index))
+        # swap every letter with the next letter
+        query_terms.extend(
+            [
+                query_term[:i] + query_term[i + 1] + query_term[i] + query_term[i + 2 :]
+                for i in range(len(query_term) - 1)
+            ]
+        )
 
-        word_counts = {word: self.word_counts.get(word, 0) for word in query_terms}
-
-        for word, count in word_counts.items():
-            if count > log_doc_count or word == query_term:
-                final_query_terms.append(word)
-
-        return final_query_terms
+        return query_terms
 
     def _run(self, query: dict, query_field: str) -> List[str]:
         """
@@ -905,7 +936,7 @@ class JameSQL:
             final_query_terms = []
 
             for query_term in query_terms:
-                final_query_terms.extend(self._turn_query_into_fuzzy_options(query_term))
+                final_query_terms.extend(list(self._turn_query_into_fuzzy_options(query_term).keys()))
 
             query_terms = final_query_terms
 

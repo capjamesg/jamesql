@@ -222,7 +222,7 @@ class QueryRewriter(Transformer):
         return items.value
 
 
-def simplify_string_query(parser, query):
+def simplify_string_query(parser, query, correct_spelling_index = None):
     # remove punctuation not in grammar
     query = re.sub(r"[^a-zA-Z0-9_.,!?^*:\-'<>=\[\] ]", "", query)
 
@@ -234,11 +234,19 @@ def simplify_string_query(parser, query):
     query = simplifier(result.terms)
     query = " ".join(query).strip()
 
+    if correct_spelling_index is not None:
+        final_query = ""
+
+        for word in query.split():
+            final_query += correct_spelling_index.spelling_correction(word) + " "
+
+        query = final_query.strip()
+
     return query
 
 
-def string_query_to_jamesql(parser, query, query_keys, default_strategies={}, boosts={}, fuzzy = False):
-    query = simplify_string_query(parser, query)
+def string_query_to_jamesql(parser, query, query_keys, default_strategies={}, boosts={}, fuzzy = False, correct_spelling_index = None):
+    query = simplify_string_query(parser, query, correct_spelling_index)
 
     if query.strip() == "":
         return {"query": {}}
