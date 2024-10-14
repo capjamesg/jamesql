@@ -86,6 +86,7 @@ class JameSQL:
         self.autosuggest_index = {}
         self.doc_lengths = defaultdict(dict)
         self.autosuggest_on = None
+        self.word_counts = defaultdict(int)
 
     def __len__(self):
         return len(self.global_index)
@@ -167,6 +168,7 @@ class JameSQL:
                 index[word]["count"] += 1
                 index[word]["documents"]["uuid"][document["uuid"]].append(pos)
                 index[word]["documents"]["count"][document["uuid"]] += 1
+                self.word_counts[word] += 1
 
                 index[document[index_by]]["count"] += 1
                 index[document[index_by]]["documents"]["uuid"][document["uuid"]].append(pos)
