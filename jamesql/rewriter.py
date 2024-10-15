@@ -223,7 +223,7 @@ class QueryRewriter(Transformer):
 
 def simplify_string_query(parser, query, correct_spelling_index = None):
     # remove punctuation not in grammar
-    query = re.sub(r"[^a-zA-Z0-9_.,!?^*:\-'<>=\[\] ]", "", query)
+    query = re.sub(r"[^a-zA-Z0-9_,!?^*:\-'<>=\[\] ]", "", query)
 
     tree = parser.parse(query)
 
