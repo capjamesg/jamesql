@@ -635,6 +635,7 @@ The following operators are supported:
 - `term1 term2`: Search for documents that contain `term1` and `term2`.
 - `'term1 term2'`: Search for the literal phrase `term1 term2` in documents.
 - `field:'term'`: Search for documents where the `field` field contains `term` (i.e. `title:"tolerate it"`).
+- `field^2 term`: Boost the score of documents where the `field` field matches the query `term` by `2`.
 
 This feature turns a string query into a JameSQL query, which is then executed and the results returned.
 
@@ -701,6 +702,47 @@ This contains both a root word starting with `start` and full documents starting
 This feature is case insensitive.
 
 The `limit` argument limits the number of results returned.
+
+## Spelling correction
+
+It is recommended that you check the spelling of words before you run a query. 
+
+This is because correcting the spelling of a word can improve the accuracy of your search results.
+
+### Correcting the spelling of a single word
+
+To recommend a spelling correction for a query, use the following code:
+
+```python
+index = ...
+
+suggestion = index.spelling_correction("taylr swift")
+```
+
+This will return a single suggestion. The suggestion will be the word that is most likely to be the correct spelling of the word you provided.
+
+Spelling correction first generates segmentations of a word, like:
+
+- `t aylorswift`
+- `ta ylorswift`
+
+If a segmentation is valid, it is returned.
+
+For example, if the user types in `taylorswift`, one permutation would be segmented into `taylor swift`. If `taylor swift` is common in the index, `taylor swift` will be returned as the suggestion.
+
+Spelling correction works by transforming the input query by inserting, deleting, and transforming one character in every position in a string. The transformed strings are then looked up in the index to find if they are present and, if so, how common they are.
+
+The most common suggestion is then returned.
+
+For example, if you provide the word `tayloi` and `taylor` is common in the index, the suggestion will be `taylor`.
+
+If correction was not possible after transforming one character, correction will be attempted with two transformations given the input string.
+
+If the word you provided is already spelled correctly, the suggestion will be the word you provided. If spelling correction is not possible (i.e. the word is too distant from any word in the index), the suggestion will be `None`.
+
+### Correcting a string query
+
+If you are correcting a string query submitted with the `string_query_search()` function, spelling will be automatically corrected using the algorithm above. No configuration is required.
 
 ## Code Search
 
@@ -786,6 +828,14 @@ pytest tests/*.py --long-benchmark
 ```
 
 In development, the goal should be making the query engine as fast as possible. The performance tests are designed to monitor for performance regressions, not set a ceiling for acceptable performance.
+
+## Deployment considerations
+
+JameSQL is thread safe if all data is preloaded into an index. JameSQL is yet not thread safe if you want to add data to an index in real-time.
+
+JameSQL is designed for high performance. JameSQL instances are suitable for use in search-as-you-type experiences, where requests are made with every keystroke. With that said, you will still be limited by other considerations (i.e. network latency, number of allocated threads, traffic).
+
+It is recommended that you cache responses from JameSQL. While it takes < 1ms to process many JameSQL queries, reading a set of results from a cache will be faster.
 
 ## Development notes
 

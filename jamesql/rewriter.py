@@ -21,7 +21,7 @@ field_query: TERM ":" ("'" MULTI_WORD "'" | WORD | DOUBLE_QUOTE MULTI_WORD DOUBL
 negate_query: "-" (strict_search_query | word_query | field_query | comparison | range_query)
 OPERATOR: ">" | "<" | ">=" | "<="
 DOUBLE_QUOTE: "\\""
-WORD: /[a-zA-Z0-9_!?*-]+/
+WORD: /[a-zA-Z0-9_.!?*-]+/
 FLOAT: /[0-9]+(\.[0-9]+)?/
 MULTI_WORD: /[a-zA-Z0-9 ]+/
 TERM: /[a-zA-Z0-9_]+/
