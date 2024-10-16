@@ -831,9 +831,7 @@ In development, the goal should be making the query engine as fast as possible. 
 
 ## Deployment considerations
 
-JameSQL is thread safe if all data is preloaded into an index. JameSQL is yet not thread safe if you want to add data to an index in real-time.
-
-JameSQL is designed for high performance. JameSQL instances are suitable for use in search-as-you-type experiences, where requests are made with every keystroke. With that said, you will still be limited by other considerations (i.e. network latency, number of allocated threads, traffic).
+JameSQL is not thread safe. This is because non-atomic mutations are made to record `_score` values during query computation. This may be fixed in a future release, although there are no immediate plans to do so.
 
 It is recommended that you cache responses from JameSQL. While it takes < 1ms to process many JameSQL queries, reading a set of results from a cache will be faster.
 
