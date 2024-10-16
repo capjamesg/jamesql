@@ -31,6 +31,24 @@ To install this project, run:
 pip install git+https://github.com/capjamesg/jamesql
 ```
 
+## Quickstart
+
+Here is a quickstart with a string-based query:
+
+```
+from jamesql import JameSQL
+
+index = JameSQL.load()
+
+index.add({"title": "tolerate it", "lyric": "Use my best colors for your portrait"})
+
+# results should return in < 1ms, whether you have one or 1k documents
+results = index.string_query_search("title:'tolerate it' colors")
+
+print(results)
+# {'documents': [{'title': 'tolerate it', 'lyric': 'Use my best colors for your portrait' ...}]
+```
+
 ## Usage
 
 ### Create a database
