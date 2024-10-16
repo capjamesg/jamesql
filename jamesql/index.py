@@ -199,6 +199,8 @@ class JameSQL:
         if os.path.exists(INDEX_DATA_FILE):
             with open(INDEX_DATA_FILE) as f:
                 file = f.read().splitlines().copy()
+        else:
+            file = []
 
         for line in file:
             document = json.loads(line)
