@@ -6,18 +6,9 @@
 
 # JameSQL
 
-An in-memory, NoSQL database implemented in Python.
+An in-memory, NoSQL database implemented in Python, with support for building custom ranking algorithms.
 
 [Try a site search engine built with JameSQL](https://jamesg.blog/search-pages/)
-
-This project has support for:
-
-- Inserting records
-- Deleting records
-- Searching for records that match a query
-- Searching for records that match multiple query conditions
-
-You can write custom ranking algorithms for each query.
 
 Here is an example of a search engine with a JameSQL back-end:
 
