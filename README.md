@@ -35,7 +35,7 @@ pip install git+https://github.com/capjamesg/jamesql
 
 Here is a quickstart with a string-based query:
 
-```
+```python
 from jamesql import JameSQL
 
 index = JameSQL.load()
@@ -54,6 +54,16 @@ print(results)
 ### Create a database
 
 To create a database, use the following code:
+
+```python
+from jamesql import JameSQL
+
+index = JameSQL()
+```
+
+### Load a database
+
+To load the database you initialized in your last session, use the following code:
 
 ```python
 from jamesql import JameSQL
