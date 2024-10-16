@@ -8,6 +8,8 @@
 
 An in-memory, NoSQL database implemented in Python, with support for building custom ranking algorithms.
 
+You can run full text search queries on thousands of documents with multiple fields in < 1ms.
+
 [Try a site search engine built with JameSQL](https://jamesg.blog/search-pages/)
 
 Here is an example of a search engine with a JameSQL back-end:
