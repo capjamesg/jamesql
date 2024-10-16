@@ -32,6 +32,6 @@ jobs:
         env:
           SITE_ENV: production
         run: |
-          python ./tests/*.py --benchmark
-          python ./tests/*.py --long-benchmark
+          python -m pytest ./tests/*.py --benchmark
+          python -m pytest ./tests/*.py --long-benchmark
           
