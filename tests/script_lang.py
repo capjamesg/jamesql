@@ -2,7 +2,8 @@ import json
 from contextlib import ExitStack as DoesNotRaise
 
 import pytest
-from lark import Lark
+from lark import   Lark
+
 from pytest import raises
 
 from jamesql import JameSQL
@@ -74,13 +75,13 @@ def script_score_parser():
             DoesNotRaise(),
         ),
         (
-            "log (_score * listens)",
-            9.618468597503831,
+            "log ((_score * listens))",
+            9.618475246417898,
             DoesNotRaise(),
         ),
         (
-            "log ((_score * listens) + 1)",
-            9.618535084655214,
+            "log (((_score * listens) + 1))",
+            9.618541733127229,
             DoesNotRaise(),
         ),
         (

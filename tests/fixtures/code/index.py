@@ -11,8 +11,10 @@ import orjson
 import pybmoore
 import pygtrie
 import hashlib
+import math
 from BTrees.OOBTree import OOBTree
-from lark import Lark
+from lark import   Lark
+
 
 from jamesql.rewriter import string_query_to_jamesql
 
@@ -81,6 +83,7 @@ class JameSQL:
         self.last_transaction_after_recovery = None
         self.autosuggest_index = {}
         self.autosuggest_on = None
+        self.word_counts = defaultdict(int)
 
     def __len__(self):
         return len(self.global_index)
@@ -162,6 +165,7 @@ class JameSQL:
                 index[word]["count"] += 1
                 index[word]["documents"]["uuid"][document["uuid"]].append(pos)
                 index[word]["documents"]["count"][document["uuid"]] += 1
+                self.word_counts[word] += 1
 
             index[document[index_by]]["count"] += 1
             index[document[index_by]]["documents"]["uuid"][document["uuid"]].append(pos)
@@ -264,7 +268,7 @@ class JameSQL:
 
         indexing_strategies = {name: gsi["strategy"] for name, gsi in self.gsis.items()}
 
-        query = string_query_to_jamesql(
+        query, _ = string_query_to_jamesql(
             query, query_keys=query_keys, default_strategies=indexing_strategies
         )
 
@@ -277,7 +281,7 @@ class JameSQL:
         Accepts a string query and returns a list of matching documents.
         """
 
-        query = self._compute_string_query(query, query_keys)
+        query, _ = self._compute_string_query(query, query_keys)
 
         if start:
             query["skip"] = start
@@ -806,6 +810,17 @@ class JameSQL:
         query_terms.extend(
             [query_term[:i] + query_term[i + 1 :] for i in range(len(query_term))]
         )
+
+        # get unique words
+        final_query_terms = []
+
+        log_doc_count = math.log(len(self.global_index))
+
+        word_counts = {word: self.word_counts.get(word) for word in query_terms}
+
+        for word, count in word_counts.items():
+            if count > log_doc_count:
+                final_query_terms.append(word)
 
         return query_terms
 

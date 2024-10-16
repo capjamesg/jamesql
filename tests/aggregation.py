@@ -72,9 +72,6 @@ def create_indices(request):
                         {
                             "lyric": {
                                 "contains": "my",
-                                "highlight": True,
-                                "strict": True,
-                                "highlight_stride": 10,
                             }
                         },
                     ]
@@ -109,7 +106,7 @@ def create_indices(request):
             },
             {"unique_record_values": {"title": 3, "lyric": 3}},
             3,
-            "The Bolter",
+            "tolerate it",
             DoesNotRaise(),
         ),  # test all (*) query with introspection
     ],

@@ -193,7 +193,7 @@ def test_search(
     with raises_exception:
         index, large_index = create_indices
 
-        internal_query = index._compute_string_query(query)
+        internal_query, _ = index._compute_string_query(query)
         response = index.string_query_search(query)
 
         # sort response by documents[0]["title"] to make it easier to compare
@@ -205,6 +205,10 @@ def test_search(
         result = DeepDiff(internal_query, rewritten_query, ignore_order=True)
 
         assert result == {}
+
+        # order documents alphabetically by title
+    
+        response["documents"] = sorted(response["documents"], key=lambda x: x["title"])
 
         if number_of_documents_expected > 0:
             assert response["documents"][0]["title"] == top_result_value

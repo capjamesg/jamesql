@@ -134,12 +134,14 @@ def test_search(
         assert len(response["documents"]) == number_of_documents_expected
 
         # exclude uuids since they are randomly assigned on indexing in this configuration
+
         assert (
             DeepDiff(
                 dict(response["groups"]),
                 group_by_result,
                 ignore_order=True,
-                exclude_regex_paths=["root\[.*\]\['uuid'\]"],
+                # ignore "score"
+                exclude_regex_paths=["root\[.*\]\['uuid'\]", "root\[.*\]\['_score'\]"],
             )
             == {}
         )

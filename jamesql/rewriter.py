@@ -70,8 +70,8 @@ class QuerySimplifier(Transformer):
         return items[0]
 
     def field_query(self, items):
-        self.terms.append(items[0] + ":" + items[1])
-        return items[0] + ":" + items[1]
+        self.terms.append(items[0] + ":" + "'" + items[1] + "'")
+        return items[0] + ":" + "'" + items[1] + "'"
 
     def TERM(self, items):
         return items.value
@@ -83,6 +83,21 @@ class QuerySimplifier(Transformer):
         self.terms.append(["NOT", items[0]])
 
         return items[0]
+    
+    def range_query(self, items):
+        self.terms.append(items[0] + "[" + items[1] + "," + items[2] + "]")
+        return items[0] + "[" + items[1] + "," + items[2] + "]"
+    
+    def comparison(self, items):
+        self.terms.append(items[0] + items[1] + items[2])
+        return items[0] + items[1] + items[2]
+    
+    def strict_search_query(self, items):
+        self.terms.append("'" + items[0] + "'")
+        return "'" + items[0] + "'"
+    
+    def MULTI_WORD(self, items):
+        return items.value
 
 class QueryRewriter(Transformer):
     def __init__(self, default_strategies=None, query_keys=None, boosts={}, fuzzy = False, highlight_keys = []):
@@ -116,7 +131,17 @@ class QueryRewriter(Transformer):
         return items[0]
 
     def query_component(self, items):
-        return {"and": items}
+        # if all child keys are OR, return as OR
+        all_are_or = False
+
+        for item in items:
+            if not isinstance(item, dict) or "or" not in item:
+                all_are_or = False
+                break
+
+            all_are_or = True
+
+        return {"and": items} if not all_are_or else {"or": items}
 
     def sort_component(self, items):
         result = {"sort_by": items[0]}
@@ -194,16 +219,22 @@ class QueryRewriter(Transformer):
             if self.indexing_strategies.get(field) == "NUMERIC":
                 continue
 
-            result.append(
-                {
-                    field: {
-                        self.get_query_strategy(field, value): value,
-                        "boost": self.boosts.get(field, boost),
-                        "fuzzy": self.fuzzy if self.get_query_strategy(field, value) == "contains" else False,
-                        "highlight": field in self.highlight_keys,
-                    }
+            results = {
+                field: {
+                    self.get_query_strategy(field, value): value,
                 }
-            )
+            }
+
+            if self.boosts.get(field):
+                results[field]["boost"] = self.boosts.get(field, boost)
+
+            if self.fuzzy:
+                results[field]["fuzzy"] = self.fuzzy if self.get_query_strategy(field, value) == "contains" else False
+
+            if field in self.highlight_keys:
+                results[field]["highlight"] = True
+
+            result.append(results)
 
         return {"or": result}
 
@@ -218,6 +249,9 @@ class QueryRewriter(Transformer):
         return {field: {self.get_query_strategy(field, value): value}}
 
     def WORD(self, items):
+        if items.value.isdigit():
+            return float(items.value)
+        
         return items.value
 
 
@@ -233,12 +267,21 @@ def simplify_string_query(parser, query, correct_spelling_index = None):
     query = simplifier(result.terms)
     query = " ".join(query).strip()
 
+    if len(query.strip()) == 0:
+        return query, {}
+
     spelling_substitutions = {}
 
     if correct_spelling_index is not None:
         final_query = ""
 
         for word in query.split():
+            # if word starts with -, skip
+            # ' and " are used to indicate strict strings, so we need to skip words that start or end with the character
+            if word.startswith("-") or correct_spelling_index.word_counts.get(word) or word.startswith("'") or word.startswith('"') or word.endswith("'") or word.endswith('"'):
+                final_query += word + " "
+                continue
+
             final_query += correct_spelling_index.spelling_correction(word) + " "
 
         spelling_substitutions = {
@@ -256,7 +299,7 @@ def string_query_to_jamesql(parser, query, query_keys, default_strategies={}, bo
     query, spelling_substitutions = simplify_string_query(parser, query, correct_spelling_index)
 
     if query.strip() == "":
-        return {"query": {}}
+        return {"query": {}}, []
 
     tree = parser.parse(query)
 

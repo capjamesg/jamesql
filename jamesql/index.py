@@ -176,7 +176,7 @@ class JameSQL:
                 index[word]["count"] += 1
                 index[word]["documents"]["uuid"][document["uuid"]].append(pos)
                 index[word]["documents"]["count"][document["uuid"]] += 1
-                self.word_counts[word] += 1
+                self.word_counts[word.lower()] += 1
 
                 index[document[index_by]]["count"] += 1
                 index[document[index_by]]["documents"]["uuid"][document["uuid"]].append(pos)
@@ -280,6 +280,9 @@ class JameSQL:
         Accepts a string query and returns a list of matching documents.
         """
 
+        if query == "":
+            return {"query": {}}, {}
+
         if not query_keys:
             query_keys = list(self.gsis.keys())
 
@@ -296,8 +299,6 @@ class JameSQL:
             highlight_keys=highlight_keys
         )
 
-        print(query)
-
         return query, spelling_substitutions
 
     def string_query_search(
@@ -306,6 +307,9 @@ class JameSQL:
         """
         Accepts a string query and returns a list of matching documents.
         """
+
+        if query == "":
+            return {"documents": []}
 
         query, spelling_substitutions = self._compute_string_query(query, query_keys, fuzzy=fuzzy, highlight_keys=highlight_keys)
 
@@ -395,8 +399,11 @@ class JameSQL:
         for key, value in document.items():
             if isinstance(value, str):
                 self.doc_lengths[document["uuid"]][key] = len(value.split(" "))
+
             if key not in self.gsis:
-                continue
+                if key == "uuid":
+                    continue
+                self.create_gsi(key, strategy=GSI_INDEX_STRATEGIES.INFER)
 
             if self.gsis[key]["strategy"] == GSI_INDEX_STRATEGIES.CONTAINS.name:
                 if not self.gsis[key]["gsi"].get(value):
@@ -469,6 +476,8 @@ class JameSQL:
                         )
                         self.gsis[key]["id2line"][f"{file_name}:{line_num}"] = line
                 self.gsis[key]["doc_lengths"][file_name] = total_lines
+            elif self.gsis[key]["strategy"] == GSI_INDEX_STRATEGIES.NOT_INDEXABLE.name:
+                pass
             else:
                 raise ValueError(
                     "Invalid GSI strategy. Must be one of: "
@@ -523,6 +532,8 @@ class JameSQL:
         # generate all possible segmentations
         # like "coffeeis" -> "coffee is"
 
+        all_possibilities = {}
+
         segmentations = {}
 
         for i in range(1, len(query)):
@@ -530,20 +541,18 @@ class JameSQL:
             right_word = query[i:]
 
             if left_word in self.word_counts and right_word in self.word_counts:
-                segmentations[(left_word, right_word)] = self.word_counts[left_word] + self.word_counts[right_word]
+                segmentations[left_word + " " + right_word] = self.word_counts[left_word] + self.word_counts[right_word]
 
         if segmentations:
-            segmentation = max(segmentations, key=segmentations.get)
-
-            return " ".join(segmentation)
+            all_possibilities.update(segmentations)
 
         fuzzy_suggestions = self._turn_query_into_fuzzy_options(query)
         
         fuzzy_suggestions = [word for word in fuzzy_suggestions if word in self.word_counts]
 
         if fuzzy_suggestions:
-            return max(fuzzy_suggestions, key=self.word_counts.get)
-        
+            all_possibilities.update({word: self.word_counts[word] for word in fuzzy_suggestions})
+
         fuzzy_suggestions_2_edits = []
 
         for word in fuzzy_suggestions:
@@ -551,10 +560,15 @@ class JameSQL:
 
         fuzzy_suggestions_2_edits = [word for word in fuzzy_suggestions_2_edits if word in self.word_counts]
 
-        if fuzzy_suggestions_2_edits:
-            return max(fuzzy_suggestions_2_edits, key=self.word_counts.get)
+        for word in fuzzy_suggestions_2_edits:
+            if word in self.word_counts:
+                # make these less exponentially weighted
+                all_possibilities[word] = math.exp(-1) * self.word_counts[word]
+
+        if len(all_possibilities) == 0:
+            return query
         
-        return query
+        return max(all_possibilities, key=all_possibilities.get)
 
     def create_gsi(
         self,
@@ -942,7 +956,7 @@ class JameSQL:
 
         enforce_strict = query["query"][query_field].get("strict", False)
         highlight_terms = query["query"][query_field].get("highlight", False)
-        
+
         highlight_stride = query["query"][query_field].get("highlight_stride", 10)
 
         if not self.gsis.get(query_field):
@@ -962,7 +976,7 @@ class JameSQL:
             final_query_terms = []
 
             for query_term in query_terms:
-                final_query_terms.extend(list(self._turn_query_into_fuzzy_options(query_term).keys()))
+                final_query_terms.extend(self._turn_query_into_fuzzy_options(query_term))
 
             query_terms = final_query_terms
 
@@ -1129,12 +1143,13 @@ class JameSQL:
                             if len(matching_documents) == 0:
                                 matching_documents.extend(uuid_of_documents)
                             else:
-                                matching_documents = list(
-                                    set(matching_documents).intersection(
-                                        set(uuid_of_documents)
+                                matching_documents.extend(
+                                    list(
+                                        set(matching_documents).intersection(
+                                            set(uuid_of_documents)
+                                        )
                                     )
                                 )
-
                             for uuid_of_document in uuid_of_documents:
                                 # count = gsi[word]["documents"]["count"][
                                 #     uuid_of_document
@@ -1171,15 +1186,15 @@ class JameSQL:
                 elif (
                     query_type == "contains" and gsi_type == GSI_INDEX_STRATEGIES.PREFIX
                 ):
-                    matching_documents.extend(
-                        [
-                            doc_uuid
-                            for key, doc_uuid in gsi.items()
-                            if pybmoore.search(query_term, key)
-                        ]
-                    )
+                    results = [
+                        list(doc["documents"]["uuid"].keys())
+                        for key, doc in gsi.items()
+                        if pybmoore.search(query_term, key)
+                    ]
+                    # flatten
+                    matching_documents.extend([item for sublist in results for item in sublist])
             elif query_type == "equals":
-                matching_documents.extend(gsi.get(query_term, []))
+                matching_documents.extend([doc_uuid for doc_uuid in gsi.get(query_term, [])])
             elif query_type == "range":
                 lower_bound, upper_bound = query_term
                 results = gsi.values(min=lower_bound, max=upper_bound)
