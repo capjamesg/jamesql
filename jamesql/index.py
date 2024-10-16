@@ -15,12 +15,15 @@ import pygtrie
 import hashlib
 from BTrees.OOBTree import OOBTree
 from lark import Lark
+import nltk
 from nltk.corpus import stopwords
 import math
 
 from jamesql.rewriter import string_query_to_jamesql, grammar as rewriter_grammar
 
 from .script_lang import JameSQLScriptTransformer, grammar
+
+nltk.download('stopwords')
 
 INDEX_STORE = os.path.join(os.path.expanduser("~"), ".jamesql")
 JOURNAL_FILE = os.path.join(os.getcwd(), "journal.jamesql")
