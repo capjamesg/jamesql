@@ -17,7 +17,7 @@ This project has support for:
 - Searching for records that match a query
 - Searching for records that match multiple query conditions
 
-This database does not enforce a schema, so you can insert records with different fields.
+You can write custom ranking algorithms for each query.
 
 Here is an example of a search engine with a JameSQL back-end:
 
