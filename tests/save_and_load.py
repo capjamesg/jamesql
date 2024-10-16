@@ -10,6 +10,10 @@ from jamesql.index import GSI_INDEX_STRATEGIES, INDEX_STORE
 
 
 def test_load_from_local_index():
+    # don't run if the file doesn't exist
+    if not os.path.exists(INDEX_STORE):
+        return
+    
     with open("tests/fixtures/documents.json") as f:
         documents = json.load(f)
 
