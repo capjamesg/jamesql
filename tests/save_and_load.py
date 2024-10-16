@@ -17,8 +17,6 @@ def test_load_from_local_index():
 
     assert len(index.global_index) == len(documents)
     assert index.global_index
-    assert len(index.gsis) == 1
+    assert len(index.gsis) == 2 # indexing two fields
     assert index.gsis["title"]
     assert len(index.uuids_to_position_in_global_index) == len(documents)
-
-    os.remove(os.path.join(INDEX_STORE, "documents"))

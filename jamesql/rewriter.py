@@ -278,7 +278,7 @@ def simplify_string_query(parser, query, correct_spelling_index = None):
         for word in query.split():
             # if word starts with -, skip
             # ' and " are used to indicate strict strings, so we need to skip words that start or end with the character
-            if word.startswith("-") or correct_spelling_index.word_counts.get(word) or word.startswith("'") or word.startswith('"') or word.endswith("'") or word.endswith('"'):
+            if word.startswith("-") or correct_spelling_index.word_counts.get(word) or word.startswith("'") or word.startswith('"') or word.endswith("'") or word.endswith('"') or "*" in word:
                 final_query += word + " "
                 continue
 

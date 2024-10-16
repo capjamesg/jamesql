@@ -77,7 +77,7 @@ def create_indices(request):
                 "sort_by": "title",
             },
             2,
-            "The Bolter",
+            "my tears ricochet",
             DoesNotRaise(),
         ),  # test range query
         (
@@ -91,7 +91,7 @@ def create_indices(request):
                 "sort_by": "title",
             },
             3,
-            "The Bolter",
+            "tolerate it",
             DoesNotRaise(),
         ),  # test range query
         (

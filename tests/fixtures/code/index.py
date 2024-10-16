@@ -661,7 +661,7 @@ class JameSQL:
 
             for document in results:
                 if document.get("_score") is None:
-                    document["_score"] = 1
+                    document["_score"] = 0
 
                 transformer = JameSQLScriptTransformer(document)
 

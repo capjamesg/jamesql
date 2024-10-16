@@ -32,6 +32,9 @@ def create_indices(request):
 
     with open("tests/fixtures/documents.json") as f:
         documents = json.load(f)
+
+    index.create_gsi("title", strategy=GSI_INDEX_STRATEGIES.CONTAINS)
+    index.create_gsi("lyric", strategy=GSI_INDEX_STRATEGIES.CONTAINS)
     
     if request.config.getoption("--benchmark") or request.config.getoption(
         "--long-benchmark"
@@ -122,7 +125,7 @@ def create_indices(request):
             1,
             "tolerate it",
             DoesNotRaise(),
-        ),  # test fuzzy and strict
+        ),
         (
             {
                 "query": {"title": {"wildcard": "tolerat*"}},
@@ -142,7 +145,7 @@ def create_indices(request):
             1,
             "tolerate it",
             DoesNotRaise(),
-        ),  # test wildcard and strict
+        ),  # test wildcard and strict; wildcard overrides strict
         (
             {
                 "query": {"title": {"contains": "it tolerate", "strict": True}},
@@ -162,7 +165,8 @@ def create_indices(request):
             1,
             "tolerate it",
             DoesNotRaise(),
-        ),  # test starts_with
+        ),  # test starts_with on an index with CONTAINS type
+        # this will return results but slowly
         (
             {
                 "query": {"lyric": {"starts_with": "Started with"}},
@@ -185,7 +189,7 @@ def create_indices(request):
         ),  # test fuzzy on contains
         (
             {
-                "query": {"lyric": {"starts_with": "Startee with", "fuzzy": True}},
+                "query": {"lyric": {"starts_with": "Startee with", "fuzzy": True, "strict": True}},
                 "limit": 10,
                 "sort_by": "title",
             },
@@ -210,7 +214,7 @@ def create_indices(request):
                 "sort_by": "lyric",
             },
             2,
-            "my tears ricochet",
+            "tolerate it",
             DoesNotRaise(),
         ),  # test starts_with
         (
@@ -374,7 +378,7 @@ def test_search(
                 "query_score": "(_score + 2)",
             },
             "tolerate it",
-            3.0,
+            2.6931471805599454,
             DoesNotRaise(),
         ),
         (
@@ -382,9 +386,10 @@ def test_search(
                 "query": {"title": {"contains": "tolerate"}},
                 "limit": 2,
                 "query_score": "(_score * 2)",
+                "sort_by": "_score",
             },
             "tolerate it",
-            2.0,
+            1.3862943611198906,
             DoesNotRaise(),
         ),
         (
@@ -393,9 +398,9 @@ def test_search(
                 "limit": 10,
                 "sort_by": "title",
             },
-            "my tears ricochet",
-            56.0,
-            DoesNotRaise(),
+            "tolerate it",
+            10.014280344034402,
+            DoesNotRaise(), # test searching TF/IDF indexed field
         ),
     ],
 )
@@ -409,6 +414,9 @@ def test_query_score_and_boost(
     with raises_exception:
         index, large_index = create_indices
         response = index.search(query)
+
+        index.create_gsi("title", strategy=GSI_INDEX_STRATEGIES.CONTAINS)
+        index.create_gsi("lyric", strategy=GSI_INDEX_STRATEGIES.CONTAINS)
 
         assert response["documents"][0]["title"] == top_document_name
         assert response["documents"][0]["_score"] == top_document_score

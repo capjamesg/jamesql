@@ -177,6 +177,7 @@ class JameSQL:
                 index[word]["documents"]["uuid"][document["uuid"]].append(pos)
                 index[word]["documents"]["count"][document["uuid"]] += 1
                 self.word_counts[word.lower()] += 1
+                self.word_counts[word] += 1
 
                 index[document[index_by]]["count"] += 1
                 index[document[index_by]]["documents"]["uuid"][document["uuid"]].append(pos)
@@ -765,6 +766,7 @@ class JameSQL:
 
                 document["_score"] = transformer.transform(tree)
 
+                print(document["_score"])
             results = sorted(results, key=lambda x: x.get("_score", 1), reverse=True)
 
         if query.get("skip"):
@@ -888,7 +890,7 @@ class JameSQL:
         return acc
 
     def _turn_query_into_fuzzy_options(self, query_term: str) -> dict:
-        query_term = str(query_term).lower()
+        query_term = str(query_term)
 
         query_terms = []
 
@@ -1024,7 +1026,10 @@ class JameSQL:
                 ):
                     matches = gsi.keys(prefix=query_term)
                     matching_documents.extend([gsi[match] for match in matches])
-
+                elif query_type == "starts_with":
+                    for document in self.global_index.values():
+                        if document.get(query_field).startswith(query_term):
+                            matching_documents.append(document["uuid"])
                 if (
                     query_type in {"contains", "wildcard"}
                     and gsi_type == GSI_INDEX_STRATEGIES.CONTAINS
@@ -1098,7 +1103,7 @@ class JameSQL:
                                 ] = match_positions
 
                         if all_matches:
-                            matching_documents = list(
+                            matching_documents.extend(
                                 set.intersection(
                                     *[set(matches) for matches in all_matches.values()]
                                 )
@@ -1121,14 +1126,14 @@ class JameSQL:
                                                 position + highlight_stride,
                                                 len(
                                                     self.global_index[doc_id][
-                                                        "post"
+                                                        highlight_terms
                                                     ].split()
                                                 ),
                                             )
                                             matches_with_context[doc_id].append(
                                                 " ".join(
                                                     self.global_index[doc_id][
-                                                        "post"
+                                                        highlight_terms
                                                     ].split()[start:end]
                                                 )
                                             )
@@ -1151,12 +1156,6 @@ class JameSQL:
                                     )
                                 )
                             for uuid_of_document in uuid_of_documents:
-                                # count = gsi[word]["documents"]["count"][
-                                #     uuid_of_document
-                                # ]
-                                # matching_document_scores.update(
-                                #     {uuid_of_document: count}
-                                # )
                                 document_term_frequency = (
                                     gsi[word]["documents"]["count"][uuid_of_document]
                                     / self.doc_lengths[uuid_of_document][query_field]
@@ -1226,15 +1225,15 @@ class JameSQL:
                             if match[0] == 0:
                                 matching_documents.extend(value)
                                 break
-
+                            
         for doc in matching_documents:
             doc = self.global_index.get(doc)
             if doc is None:
                 continue
 
-            doc["_score"] = matching_document_scores.get(doc["uuid"], 1) * float(
+            doc["_score"] = (matching_document_scores.get(doc["uuid"], 0) * float(
                 boost_factor
-            ) + doc.get("_score", 0)
+            )) + doc.get("_score", 0)
 
             if doc.get("_context") is None:
                 doc["_context"] = []

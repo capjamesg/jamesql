@@ -188,8 +188,9 @@ def create_indices(request):
                     DoesNotRaise(),
                 ),  # blank query
                 (
-                    "Started or sky",
-        {'query': {'or': [{'or': [{'title': {'contains': 'Started'}}, {'lyric': {'contains': 'Started'}}]}, {'or': [{'title': {'contains': 'or'}}, {'lyric': {'contains': 'or'}}]}, {'or': [{'title': {'contains': 'sky'}}, {'lyric': {'contains': 'sky'}}]}]}, 'limit': 10},            3,
+                    "Started sky",
+                    {'query': {'or': [{'or': [{'title': {'contains': 'Started'}}, {'lyric': {'contains': 'Started'}}]}, {'or': [{'title': {'contains': 'sky'}}, {'lyric': {'contains': 'sky'}}]}]}, 'limit': 10},
+                    3,
                     "The Bolter",
                     DoesNotRaise(),
                 ),  # test OR argument

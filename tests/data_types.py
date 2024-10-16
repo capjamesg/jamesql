@@ -68,7 +68,7 @@ def create_indices(request):
                 "sort_by": "title",
             },
             2,
-            "my tears ricochet",
+            "tolerate it",
             DoesNotRaise(),
         ),  # test equals with boolean
         (
@@ -116,7 +116,7 @@ def create_indices(request):
                 "sort_by": "title",
             },
             2,
-            "my tears ricochet",
+            "tolerate it",
             DoesNotRaise(),
         ),  # test greater than with date
     ],

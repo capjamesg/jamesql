@@ -74,7 +74,7 @@ def create_indices(request):
                         {
                             "lyric": {
                                 "contains": "kiss",
-                                "highlight": True,
+                                "highlight": "lyric",
                                 "strict": True,
                             }
                         }
