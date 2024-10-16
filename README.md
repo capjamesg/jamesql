@@ -28,7 +28,7 @@ https://github.com/user-attachments/assets/f1bf931d-6601-4fc8-b43c-d284853bce8f
 To install this project, run:
 
 ```
-pip install jamesql
+pip install git+https://github.com/capjamesg/jamesql
 ```
 
 ## Usage
@@ -38,7 +38,7 @@ pip install jamesql
 To create a database, use the following code:
 
 ```python
-from nosql import NoSQL
+from jamesql import JameSQL
 
 index = JameSQL.load()
 ```
