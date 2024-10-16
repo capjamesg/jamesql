@@ -8,6 +8,8 @@
 
 An in-memory, NoSQL database implemented in Python.
 
+[Try a site search engine built with JameSQL](https://jamesg.blog/search-pages/)
+
 This project has support for:
 
 - Inserting records
@@ -17,11 +19,9 @@ This project has support for:
 
 This database does not enforce a schema, so you can insert records with different fields.
 
-Here is an example of a query run in the JameSQL web interface:
+Here is an example of a search engine with a JameSQL back-end:
 
-![JameSQL web interface](assets/screenshot.png)
-
-JamesQL is designed for use in single-threaded applications. It is not designed for use in multi-threaded applications.
+https://github.com/user-attachments/assets/f1bf931d-6601-4fc8-b43c-d284853bce8f
 
 ## Installation
 
