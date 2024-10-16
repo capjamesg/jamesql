@@ -22,7 +22,8 @@ setuptools.setup(
         "pybmoore",
         "pygtrie",
         "lark",
-        "btrees"
+        "btrees",
+        "nltk"
     ],
     packages=find_packages(exclude=("tests",)),
     extras_require={
