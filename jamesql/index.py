@@ -11,7 +11,9 @@ from enum import Enum
 from functools import lru_cache
 from typing import Dict, List
 from sortedcontainers import SortedDict
+import threading
 
+from operator import itemgetter
 import orjson
 import pybmoore
 import pygtrie
@@ -112,6 +114,8 @@ class JameSQL:
         self.tf = defaultdict(dict)
         self.idf = {}
         self.tf_idf = defaultdict(lambda: SortedDict())
+        self.reverse_tf_idf = defaultdict(lambda: SortedDict())
+        self.write_lock = threading.Lock()
 
     def __len__(self):
         return len(self.global_index)
@@ -228,10 +232,13 @@ class JameSQL:
         # Compute TF-IDF for each document
         for document in documents:
             for word, tf_value in self.tf[document["uuid"]].items():
-                if self.tf_idf[word].get(tf_value * self.idf[word]):
-                    self.tf_idf[word][tf_value * self.idf[word]].append(document["uuid"])
+                score = tf_value * self.idf[word]
+                if self.tf_idf[word].get(score):
+                    self.tf_idf[word][score].append(document["uuid"])
                 else:
-                    self.tf_idf[word][tf_value * self.idf[word]] = [document["uuid"]]
+                    self.tf_idf[word][score] = [document["uuid"]]
+
+                self.reverse_tf_idf[word][document["uuid"]] = score
 
         return index
 
@@ -437,153 +444,157 @@ class JameSQL:
         Every document is assigned a UUID.
         """
 
-        if write_to_journal:
-            with open(JOURNAL_FILE, "a") as f:
-                op_record = {"operation": "add", "document": document}
-                f.write(json.dumps(op_record) + "\n")
+        with self.write_lock:
+            if write_to_journal:
+                with open(JOURNAL_FILE, "a") as f:
+                    op_record = {"operation": "add", "document": document}
+                    f.write(json.dumps(op_record) + "\n")
 
-        if doc_id is not None:
-            document["uuid"] = doc_id
-        elif document.get("uuid"):
-            doc_id = document["uuid"]
-        else:
-            document["uuid"] = uuid.uuid4().hex
+            if doc_id is not None:
+                document["uuid"] = doc_id
+            elif document.get("uuid"):
+                doc_id = document["uuid"]
+            else:
+                document["uuid"] = uuid.uuid4().hex
 
-        self.global_index[document["uuid"]] = document
+            self.global_index[document["uuid"]] = document
 
-        self.uuids_to_position_in_global_index[document["uuid"]] = (
-            len(self.global_index) - 1
-        )
+            self.uuids_to_position_in_global_index[document["uuid"]] = (
+                len(self.global_index) - 1
+            )
 
-        if self.autosuggest_on and document.get(self.autosuggest_on):
-            self.autosuggest_index[document[self.autosuggest_on].lower()] = document[
-                self.autosuggest_on
-            ]
+            if self.autosuggest_on and document.get(self.autosuggest_on):
+                self.autosuggest_index[document[self.autosuggest_on].lower()] = document[
+                    self.autosuggest_on
+                ]
 
-        # add to GSI
-        for key, value in document.items():
-            if isinstance(value, str):
-                self.doc_lengths[document["uuid"]][key] = len(value.split(" "))
+            # add to GSI
+            for key, value in document.items():
+                if isinstance(value, str):
+                    self.doc_lengths[document["uuid"]][key] = len(value.split(" "))
 
-            if key not in self.gsis:
-                if key == "uuid":
-                    continue
-                self.create_gsi(key, strategy=GSI_INDEX_STRATEGIES.INFER)
+                if key not in self.gsis:
+                    if key == "uuid":
+                        continue
+                    self.create_gsi(key, strategy=GSI_INDEX_STRATEGIES.INFER)
 
-            if self.gsis[key]["strategy"] == GSI_INDEX_STRATEGIES.CONTAINS.name:
-                if not self.gsis[key]["gsi"].get(value):
-                    self.gsis[key]["gsi"][value] = {
-                        "documents": {
-                            "uuid": defaultdict(list),
-                            "count": defaultdict(int),
+                if self.gsis[key]["strategy"] == GSI_INDEX_STRATEGIES.CONTAINS.name:
+                    if not self.gsis[key]["gsi"].get(value):
+                        self.gsis[key]["gsi"][value] = {
+                            "documents": {
+                                "uuid": defaultdict(list),
+                                "count": defaultdict(int),
+                            }
                         }
-                    }
-                self.gsis[key]["gsi"][value]["length"] = len(value)
-                self.gsis[key]["gsi"][value]["documents"]["uuid"][
-                    document["uuid"]
-                ].append(0)
-                self.gsis[key]["gsi"][value]["documents"]["count"][
-                    document["uuid"]
-                ] += 1
-            elif self.gsis[key]["strategy"] == GSI_INDEX_STRATEGIES.PREFIX.name:
-                if not self.gsis[key]["gsi"].get(value[:20]):
-                    self.gsis[key]["gsi"][value[:20]] = {
-                        "documents": {
-                            "uuid": defaultdict(list),
-                            "count": defaultdict(int),
+                    self.gsis[key]["gsi"][value]["length"] = len(value)
+                    self.gsis[key]["gsi"][value]["documents"]["uuid"][
+                        document["uuid"]
+                    ].append(0)
+                    self.gsis[key]["gsi"][value]["documents"]["count"][
+                        document["uuid"]
+                    ] += 1
+                elif self.gsis[key]["strategy"] == GSI_INDEX_STRATEGIES.PREFIX.name:
+                    if not self.gsis[key]["gsi"].get(value[:20]):
+                        self.gsis[key]["gsi"][value[:20]] = {
+                            "documents": {
+                                "uuid": defaultdict(list),
+                                "count": defaultdict(int),
+                            }
                         }
-                    }
 
-                self.gsis[key]["gsi"][value]["documents"]["length"] = len(value)
-                self.gsis[key]["gsi"][value[:20]]["documents"]["uuid"][
-                    document["uuid"]
-                ].append(0)
-                self.gsis[key]["gsi"][value[:20]]["documents"]["count"][
-                    document["uuid"]
-                ] += 1
-            elif self.gsis[key]["strategy"] == GSI_INDEX_STRATEGIES.FLAT.name:
-                if isinstance(value, list):
-                    for inner in value:
-                        if not self.gsis[key]["gsi"].get(inner):
-                            self.gsis[key]["gsi"][inner] = []
+                    self.gsis[key]["gsi"][value]["documents"]["length"] = len(value)
+                    self.gsis[key]["gsi"][value[:20]]["documents"]["uuid"][
+                        document["uuid"]
+                    ].append(0)
+                    self.gsis[key]["gsi"][value[:20]]["documents"]["count"][
+                        document["uuid"]
+                    ] += 1
+                elif self.gsis[key]["strategy"] == GSI_INDEX_STRATEGIES.FLAT.name:
+                    if isinstance(value, list):
+                        for inner in value:
+                            if not self.gsis[key]["gsi"].get(inner):
+                                self.gsis[key]["gsi"][inner] = []
 
-                        self.gsis[key]["gsi"][inner].append(document["uuid"])
-                else:
+                            self.gsis[key]["gsi"][inner].append(document["uuid"])
+                    else:
+                        if not self.gsis[key]["gsi"].get(value):
+                            self.gsis[key]["gsi"][value] = []
+
+                        self.gsis[key]["gsi"][value].append(document["uuid"])
+                elif (
+                    self.gsis[key]["strategy"] == GSI_INDEX_STRATEGIES.NUMERIC.name
+                    or self.gsis[key]["strategy"] == GSI_INDEX_STRATEGIES.DATE.name
+                ):
                     if not self.gsis[key]["gsi"].get(value):
                         self.gsis[key]["gsi"][value] = []
 
                     self.gsis[key]["gsi"][value].append(document["uuid"])
-            elif (
-                self.gsis[key]["strategy"] == GSI_INDEX_STRATEGIES.NUMERIC.name
-                or self.gsis[key]["strategy"] == GSI_INDEX_STRATEGIES.DATE.name
-            ):
-                if not self.gsis[key]["gsi"].get(value):
-                    self.gsis[key]["gsi"][value] = []
+                elif self.gsis[key]["strategy"] == GSI_INDEX_STRATEGIES.TRIGRAM_CODE.name:
+                    code_lines = value.split("\n")
+                    total_lines = len(code_lines)
+                    file_name = document.get("file_name")
 
-                self.gsis[key]["gsi"][value].append(document["uuid"])
-            elif self.gsis[key]["strategy"] == GSI_INDEX_STRATEGIES.TRIGRAM_CODE.name:
-                code_lines = value.split("\n")
-                total_lines = len(code_lines)
-                file_name = document.get("file_name")
+                    for line_num, line in enumerate(code_lines):
+                        trigrams = get_trigrams(line)
 
-                for line_num, line in enumerate(code_lines):
-                    trigrams = get_trigrams(line)
+                        if len(trigrams) == 0:
+                            self.gsis[key]["id2line"][f"{file_name}:{line_num}"] = line
 
-                    if len(trigrams) == 0:
-                        self.gsis[key]["id2line"][f"{file_name}:{line_num}"] = line
+                        for trigram in trigrams:
+                            if not self.gsis[key]["gsi"].get(trigram):
+                                self.gsis[key]["gsi"][trigram] = []
 
-                    for trigram in trigrams:
-                        if not self.gsis[key]["gsi"].get(trigram):
-                            self.gsis[key]["gsi"][trigram] = []
+                            self.gsis[key]["gsi"][trigram].append(
+                                (file_name, line_num, document["uuid"])
+                            )
+                            self.gsis[key]["id2line"][f"{file_name}:{line_num}"] = line
+                    self.gsis[key]["doc_lengths"][file_name] = total_lines
+                elif self.gsis[key]["strategy"] == GSI_INDEX_STRATEGIES.NOT_INDEXABLE.name:
+                    pass
+                else:
+                    raise ValueError(
+                        "Invalid GSI strategy. Must be one of: "
+                        + ", ".join([strategy.name for strategy in GSI_INDEX_STRATEGIES])
+                        + "."
+                    )
 
-                        self.gsis[key]["gsi"][trigram].append(
-                            (file_name, line_num, document["uuid"])
-                        )
-                        self.gsis[key]["id2line"][f"{file_name}:{line_num}"] = line
-                self.gsis[key]["doc_lengths"][file_name] = total_lines
-            elif self.gsis[key]["strategy"] == GSI_INDEX_STRATEGIES.NOT_INDEXABLE.name:
-                pass
-            else:
-                raise ValueError(
-                    "Invalid GSI strategy. Must be one of: "
-                    + ", ".join([strategy.name for strategy in GSI_INDEX_STRATEGIES])
-                    + "."
-                )
+            if write_to_journal:
+                with open(INDEX_DATA_FILE, "a") as f:
+                    f.write(json.dumps(document) + "\n")
 
-        if write_to_journal:
-            with open(INDEX_DATA_FILE, "a") as f:
-                f.write(json.dumps(document) + "\n")
+                os.remove(JOURNAL_FILE)
 
-            os.remove(JOURNAL_FILE)
-
-        return document
+            return document
 
     def update(self, uuid: str, document: dict) -> Dict[str, dict]:
         """
-        Accepts a UUID and a Tdocument and updates the document associated with that key.
+        Accepts a UUID and a document and updates the document associated with that key.
         """
-        if uuid not in self.uuids_to_position_in_global_index:
-            return {"error": "Document not found"}
+        
+        with self.write_lock:
+            if uuid not in self.uuids_to_position_in_global_index:
+                return {"error": "Document not found"}
 
-        position_in_global_index = self.uuids_to_position_in_global_index[uuid]
+            position_in_global_index = self.uuids_to_position_in_global_index[uuid]
 
-        self.global_index[position_in_global_index] = document
+            self.global_index[position_in_global_index] = document
 
-        return document
+            return document
 
     def remove(self, uuid: str) -> None:
         """
         Accepts a UUID and removes the document associated with that key.
         """
 
-        with open(JOURNAL_FILE, "a") as f:
-            op_record = {"operation": "remove", "document": {"uuid": uuid}}
-            f.write(json.dumps(op_record) + "\n")
+        with self.write_lock:
+            with open(JOURNAL_FILE, "a") as f:
+                op_record = {"operation": "remove", "document": {"uuid": uuid}}
+                f.write(json.dumps(op_record) + "\n")
 
-        del self.global_index[uuid]
+            del self.global_index[uuid]
 
-        with open(JOURNAL_FILE, "w") as f:
-            f.write("")
+            with open(JOURNAL_FILE, "w") as f:
+                f.write("")
 
     @lru_cache()
     def spelling_correction(self, query: str) -> str:
@@ -780,111 +791,111 @@ class JameSQL:
         return gsi
 
     def search(self, query: dict) -> List[str]:
-        start_time = time.time()
+        with self.write_lock:
+            start_time = time.time()
 
-        results_limit = query.get("limit", 10)
+            results_limit = query.get("limit", 10)
 
-        if not query.get("query"):
-            return {
-                "documents": [],
-                "error": "No query provided",
-                "query_time": str(round(time.time() - start_time, 4)),
-            }
+            metadata = {}
 
-        if query["query"] == {}:  # empty query
-            results = []
-        elif query["query"] == "*":  # all query
-            results = list(self.global_index.values())
-        else:
-            number_of_query_conditions = self._get_query_conditions(query["query"])
-
-            if len(number_of_query_conditions) > MAXIMUM_QUERY_STATEMENTS:
+            if not query.get("query"):
                 return {
                     "documents": [],
-                    "error": "Too many query conditions. Maximum is "
-                    + str(MAXIMUM_QUERY_STATEMENTS)
-                    + ".",
+                    "error": "No query provided",
                     "query_time": str(round(time.time() - start_time, 4)),
                 }
 
-            results = self._recursively_parse_query(query["query"])
+            if query["query"] == {}:  # empty query
+                results = []
+            elif query["query"] == "*":  # all query
+                results = list(self.global_index.values())
+            else:
+                number_of_query_conditions = self._get_query_conditions(query["query"])
 
-            results = [
-                self.global_index.get(doc_id)
-                for doc_id in results
-                if doc_id in self.global_index
-            ]
+                if len(number_of_query_conditions) > MAXIMUM_QUERY_STATEMENTS:
+                    return {
+                        "documents": [],
+                        "error": "Too many query conditions. Maximum is "
+                        + str(MAXIMUM_QUERY_STATEMENTS)
+                        + ".",
+                        "query_time": str(round(time.time() - start_time, 4)),
+                    }
 
-        end_time = time.time()
+                metadata, result_ids = self._recursively_parse_query(query["query"])
 
-        if query.get("sort_by") is None:
-            query["sort_by"] = "_score"
+                results = [self.global_index.get(doc_id) for doc_id in result_ids]
 
-        results_sort_by = query["sort_by"]
+                results = orjson.loads(orjson.dumps(results))
 
-        if query.get("sort_order") == "asc":
-            results = sorted(results, key=lambda x: x[results_sort_by])
-        else:
-            results = sorted(results, key=lambda x: x[results_sort_by], reverse=True)
+                for r in results:
+                    r["_score"] = 0
+                    if r["uuid"] in metadata.get("scores", {}):
+                        r["_score"] = metadata["scores"][r["uuid"]]
+                    if r["uuid"] in metadata.get("highlights", {}):
+                        r["_context"] = metadata["highlights"][r["uuid"]]
 
-        if query.get("query_score"):
-            tree = parse_script_score(query["query_score"])
+            end_time = time.time()
 
-            for document in results:
-                if document.get("_score") is None:
-                    document["_score"] = 1
+            if query.get("sort_by") is None:
+                query["sort_by"] = "_score"
 
-                transformer = JameSQLScriptTransformer(document)
+            results_sort_by = query["sort_by"]
 
-                document["_score"] = transformer.transform(tree)
+            if query.get("sort_order") == "asc":
+                results = sorted(
+                    results, key=itemgetter(results_sort_by), reverse=False
+                )
+            else:
+                results = sorted(
+                    results, key=itemgetter(results_sort_by), reverse=True
+                )
 
-            results = sorted(results, key=lambda x: x.get("_score", 1), reverse=True)
+            if query.get("query_score"):
+                tree = parse_script_score(query["query_score"])
 
-        if query.get("skip"):
-            results = results[int(query["skip"]) :]
+                for document in results:
+                    if document.get("_score") is None:
+                        document["_score"] = 1
 
-        total_results = len(results)
+                    transformer = JameSQLScriptTransformer(document)
 
-        if results_limit:
-            results = results[:results_limit]
+                    document["_score"] = transformer.transform(tree)
 
-        if results_limit == 0:
-            results = []
+                results = sorted(results, key=lambda x: x.get("_score", 1), reverse=True)
 
-        result = {
-            "documents": results,
-            "query_time": str(round(end_time - start_time, 4)),
-            "total_results": total_results,
-        }
+            if query.get("skip"):
+                results = results[int(query["skip"]) :]
 
-        if query.get("metrics") and "aggregate" in query["metrics"]:
-            result["metrics"] = {
-                "unique_record_values": self._get_unique_record_count(results),
+            total_results = len(results)
+
+            if results_limit:
+                results = results[:results_limit]
+
+            if results_limit == 0:
+                results = []
+
+            result = {
+                "documents": results,
+                "query_time": str(round(end_time - start_time, 4)),
+                "total_results": total_results,
             }
 
-        if query.get("group_by"):
-            result["groups"] = defaultdict(list)
+            if query.get("metrics") and "aggregate" in query["metrics"]:
+                result["metrics"] = {
+                    "unique_record_values": self._get_unique_record_count(results),
+                }
 
-            for doc in results:
-                if isinstance(doc.get(query["group_by"]), list):
-                    for item in doc.get(query["group_by"]):
-                        result["groups"][item].append(doc)
-                else:
-                    result["groups"][doc.get(query["group_by"])].append(doc)
+            if query.get("group_by"):
+                result["groups"] = defaultdict(list)
 
-        # reset highlights and scores
-        # this is done because highlights and scores are adjusted for each query
-        # in the long term, this should be replaced with logic that
-        # recursively returns scores and highlights in a `metadata`-type field
-        # in _recursively_parse_query
+                for doc in results:
+                    if isinstance(doc.get(query["group_by"]), list):
+                        for item in doc.get(query["group_by"]):
+                            result["groups"][item].append(doc)
+                    else:
+                        result["groups"][doc.get(query["group_by"])].append(doc)
 
-        response = deepcopy(result)
-
-        for doc in results:
-            doc["_context"] = []
-            doc["_score"] = 0
-
-        return response
+            return result
 
     def _get_query_conditions(self, query_tree):
         first_key = list(query_tree.keys())[0]
@@ -914,51 +925,70 @@ class JameSQL:
         """
         acc = set()
 
-        for first_key in query_tree.keys():
-            if first_key in RESERVED_QUERY_TERMS:
-                continue
+        first_key = list(query_tree.keys())[0]
 
-            if first_key in KEYW0RDS:
-                values = []
+        if first_key in RESERVED_QUERY_TERMS:
+            return {}, set()
 
-                method = METHODS[first_key]
+        if first_key in KEYW0RDS:
+            values = []
+            metadata = []
 
-                if isinstance(query_tree[first_key], dict):
-                    for key, query in query_tree[first_key].items():
-                        values.append(self._recursively_parse_query({key: query}))
-                else:
-                    for query in query_tree[first_key]:
-                        values.append(self._recursively_parse_query(query))
+            method = METHODS[first_key]
 
-                # uuids = [set(value.get("uuid") for value in value) for value in values]
-                uuids = values
-
-                if first_key == "not":
-                    uuid_intersection = set(self.global_index.keys()).difference(
-                        method(*uuids)
-                    )
-                else:
-                    uuid_intersection = method(*uuids)
-
-                # new_values = defaultdict(int)
-
-                # for value in values:
-                #     for v in value:
-                #         if v.get("uuid") in uuid_intersection:
-                #             new_values[v.get("uuid")] += v.get("_score", 1)
-
-                acc = set.union(acc, uuid_intersection)
-            elif first_key in self.SELF_METHODS:
-                func = self.SELF_METHODS[first_key]
-
-                acc = set.union(getattr(self, func)(query_tree[first_key]))
+            if isinstance(query_tree[first_key], dict):
+                for key, query in query_tree[first_key].items():
+                    query_metadata, query_values = self._recursively_parse_query({key: query})
+                    metadata.append(query_metadata)
+                    values.append(query_values)
             else:
-                results, result_uuids = self._run(
-                    {"query": query_tree}, list(query_tree.keys())[0]
-                )
-                acc = set.union(acc, result_uuids)
+                for query in query_tree[first_key]:
+                    query_metadata, query_values = self._recursively_parse_query(query)
+                    metadata.append(query_metadata)
+                    values.append(query_values)
 
-        return acc
+            # uuids = [set(value.get("uuid") for value in value) for value in values]
+            uuids = values
+
+            if first_key == "not":
+                uuid_intersection = set(self.global_index.keys()).difference(
+                    method(*uuids)
+                )
+            else:
+                uuid_intersection = method(*uuids)
+
+            acc = set.union(acc, uuid_intersection)
+
+            # for each item in metadata, update the scores and highlights
+            final_highlights = defaultdict(list)
+            final_scores = defaultdict(float)
+
+            for item in metadata:
+                for key in list(acc):
+                    highlights = item.get("highlights", {}).get(key)
+                    if highlights:
+                        final_highlights[key].extend(highlights)
+
+                    score_record = item.get("scores", {}).get(key)
+                    if score_record:
+                        final_scores[key] += score_record
+
+            scores = {
+                "scores": final_scores,
+                "highlights": final_highlights,
+            }
+
+        elif first_key in self.SELF_METHODS:
+            func = self.SELF_METHODS[first_key]
+
+            acc = set.union(getattr(self, func)(query_tree[first_key]))
+        else:
+            scores, result_uuids = self._run(
+                {"query": query_tree}, first_key
+            )
+            acc = set.union(acc, result_uuids)
+
+        return scores, acc
 
     def _turn_query_into_fuzzy_options(self, query_term: str) -> dict:
         query_term = str(query_term)
@@ -1214,29 +1244,17 @@ class JameSQL:
                                 matching_highlights.update(matches_with_context)
                     else:
                         for word in query_term.split(" "):
-                            if gsi.get(word.lower()) is None:
+                            word = word.lower()
+                            
+                            if gsi.get(word) is None:
                                 continue
 
-                            results = self.tf_idf[word.lower()]
-                            count = 0
+                            results = self.reverse_tf_idf[word]
 
-                            for k, v in results.items():
-                                if count > self.match_limit_for_large_result_pages:
-                                    break
-                                
-                                for item in v[:self.match_limit_for_large_result_pages]:
-                                    # skip if word not in document
-                                    if self.gsis[query_field]["gsi"].get(
-                                        word.lower(), {}
-                                    ).get("documents", {}).get("uuid", {}).get(item) is None:
-                                        continue
-
-                                    matching_document_scores.update({item: k})
-                                    matching_documents.append(item)
+                            matching_document_scores = results
+                            matching_documents.extend(results.keys())
 
                 elif query_type == "equals":
-                    print(query_term)
-                    print(gsi.get(query_term, {}))
                     matching_documents.extend(
                         gsi.get(query_term, {}).get("documents", {}).get("uuid", [])
                     )
@@ -1288,18 +1306,17 @@ class JameSQL:
                                 matching_documents.extend(value)
                                 break
 
+        advanced_query_information = {
+            "scores": defaultdict(dict),
+            "contexts": defaultdict(dict),
+        }
+        
         for doc in matching_documents[:self.match_limit_for_large_result_pages]:
-            doc = self.global_index.get(doc)
-            if doc is None:
-                continue
+            advanced_query_information["scores"][doc] = matching_document_scores.get(doc, 0) * float(
+                boost_factor
+            )
 
-            doc["_score"] = (
-                matching_document_scores.get(doc["uuid"], 0) * float(boost_factor)
-            ) + doc.get("_score", 0)
+            if matching_highlights:
+                advanced_query_information["contexts"][doc] = matching_highlights.get(doc, {})
 
-            if doc.get("_context") is None:
-                doc["_context"] = []
-
-            doc["_context"] = matching_highlights.get(doc["uuid"], {})
-
-        return {}, matching_documents[:self.match_limit_for_large_result_pages]
+        return advanced_query_information, matching_documents[:self.match_limit_for_large_result_pages]

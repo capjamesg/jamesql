@@ -384,7 +384,7 @@ def test_search(
                 "query_score": "(_score + 2)",
             },
             "tolerate it",
-            4.19722457733622,
+            2.549306144334055,
             DoesNotRaise(),
         ),
         (
@@ -395,7 +395,7 @@ def test_search(
                 "sort_by": "_score",
             },
             "tolerate it",
-            6.591673732008659,
+            1.09861228866810989,
             DoesNotRaise(),
         ),
         (
@@ -405,7 +405,7 @@ def test_search(
                 "sort_by": "title",
             },
             "tolerate it",
-            17.660258042044497,
+            2.5228940060063563,
             DoesNotRaise(),  # test searching TF/IDF indexed field
         ),
     ],
