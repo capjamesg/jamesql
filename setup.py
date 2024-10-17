@@ -23,7 +23,8 @@ setuptools.setup(
         "pygtrie",
         "lark",
         "btrees",
-        "nltk"
+        "nltk",
+        "sortedcontainers"
     ],
     packages=find_packages(exclude=("tests",)),
     extras_require={
