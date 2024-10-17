@@ -46,5 +46,5 @@ def simplifier(terms):
             if t[1] in outer_terms:
                 to_remove.add(t[1])
                 to_remove.add("-" + t[1])
-    
+
     return [i for i in new_terms if normalize_operator_query(i) not in to_remove]

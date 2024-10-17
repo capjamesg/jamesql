@@ -1,7 +1,7 @@
 import re
 
-from lark import   Lark, Transformer
-from lark.visitors import Visitor, Interpreter
+from lark import Lark, Transformer
+from lark.visitors import Interpreter, Visitor
 
 from .query_simplifier import simplifier
 
@@ -45,7 +45,7 @@ class QuerySimplifier(Transformer):
 
     def WORD(self, items):
         return items.value
-    
+
     def FLOAT(self, items):
         return items.value
 
@@ -83,24 +83,32 @@ class QuerySimplifier(Transformer):
         self.terms.append(["NOT", items[0]])
 
         return items[0]
-    
+
     def range_query(self, items):
         self.terms.append(items[0] + "[" + items[1] + "," + items[2] + "]")
         return items[0] + "[" + items[1] + "," + items[2] + "]"
-    
+
     def comparison(self, items):
         self.terms.append(items[0] + items[1] + items[2])
         return items[0] + items[1] + items[2]
-    
+
     def strict_search_query(self, items):
         self.terms.append("'" + items[0] + "'")
         return "'" + items[0] + "'"
-    
+
     def MULTI_WORD(self, items):
         return items.value
 
+
 class QueryRewriter(Transformer):
-    def __init__(self, default_strategies=None, query_keys=None, boosts={}, fuzzy = False, highlight_keys = []):
+    def __init__(
+        self,
+        default_strategies=None,
+        query_keys=None,
+        boosts={},
+        fuzzy=False,
+        highlight_keys=[],
+    ):
         self.indexing_strategies = default_strategies
         self.query_keys = query_keys
         self.boosts = boosts
@@ -117,7 +125,7 @@ class QueryRewriter(Transformer):
 
     def ORDER(self, items):
         return items.value
-    
+
     def FLOAT(self, items):
         return items.value
 
@@ -229,7 +237,11 @@ class QueryRewriter(Transformer):
                 results[field]["boost"] = self.boosts.get(field, boost)
 
             if self.fuzzy:
-                results[field]["fuzzy"] = self.fuzzy if self.get_query_strategy(field, value) == "contains" else False
+                results[field]["fuzzy"] = (
+                    self.fuzzy
+                    if self.get_query_strategy(field, value) == "contains"
+                    else False
+                )
 
             if field in self.highlight_keys:
                 results[field]["highlight"] = True
@@ -251,11 +263,11 @@ class QueryRewriter(Transformer):
     def WORD(self, items):
         if items.value.isdigit():
             return float(items.value)
-        
+
         return items.value
 
 
-def simplify_string_query(parser, query, correct_spelling_index = None):
+def simplify_string_query(parser, query, correct_spelling_index=None):
     # remove punctuation not in grammar
     query = re.sub(r"[^a-zA-Z0-9_,!?^*:\-'<>=\[\] ]", "", query)
 
@@ -278,7 +290,18 @@ def simplify_string_query(parser, query, correct_spelling_index = None):
         for word in query.split():
             # if word starts with -, skip
             # ' and " are used to indicate strict strings, so we need to skip words that start or end with the character
-            if word.startswith("-") or correct_spelling_index.word_counts.get(word) or word.startswith("'") or word.startswith('"') or word.endswith("'") or word.endswith('"') or "*" in word:
+            first_char = word[0] if len(word) > 0 else ""
+            last_char = word[-1] if len(word) > 0 else ""
+
+            if (
+                first_char == "-"
+                or first_char == "'"
+                or first_char == '"'
+                or last_char == "'"
+                or last_char == '"'
+                or correct_spelling_index.word_counts.get(word)
+                or "*" in word
+            ):
                 final_query += word + " "
                 continue
 
@@ -295,8 +318,19 @@ def simplify_string_query(parser, query, correct_spelling_index = None):
     return query, spelling_substitutions
 
 
-def string_query_to_jamesql(parser, query, query_keys, default_strategies={}, boosts={}, fuzzy = False, correct_spelling_index = None, highlight_keys = False):
-    query, spelling_substitutions = simplify_string_query(parser, query, correct_spelling_index)
+def string_query_to_jamesql(
+    parser,
+    query,
+    query_keys,
+    default_strategies={},
+    boosts={},
+    fuzzy=False,
+    correct_spelling_index=None,
+    highlight_keys=False,
+):
+    query, spelling_substitutions = simplify_string_query(
+        parser, query, correct_spelling_index
+    )
 
     if query.strip() == "":
         return {"query": {}}, []
@@ -304,7 +338,11 @@ def string_query_to_jamesql(parser, query, query_keys, default_strategies={}, bo
     tree = parser.parse(query)
 
     rewritten_query = QueryRewriter(
-        default_strategies=default_strategies, query_keys=query_keys, boosts=boosts, fuzzy=fuzzy, highlight_keys=highlight_keys
+        default_strategies=default_strategies,
+        query_keys=query_keys,
+        boosts=boosts,
+        fuzzy=fuzzy,
+        highlight_keys=highlight_keys,
     ).transform(tree)
 
     return rewritten_query, spelling_substitutions

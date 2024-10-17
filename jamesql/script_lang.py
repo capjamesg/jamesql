@@ -1,8 +1,7 @@
+import datetime
 import math
 
-from lark import   Transformer
-
-import datetime
+from lark import Transformer
 
 grammar = """
 start: query

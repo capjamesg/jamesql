@@ -31,7 +31,7 @@ def test_gsi_type_inference(request):
         index.gsis["record_last_updated"]["strategy"] == GSI_INDEX_STRATEGIES.DATE.name
     )
 
-    with open("tests/fixtures/documents.json") as f:
+    with open("tests/fixtures/documents_with_varied_data_types.json") as f:
         documents = json.load(f)
 
     if request.config.getoption("--benchmark") or request.config.getoption(
@@ -50,9 +50,6 @@ def test_gsi_type_inference(request):
                     ]
                 )
             large_index.add(document)
-
-        large_index.create_gsi("title", strategy=GSI_INDEX_STRATEGIES.CONTAINS)
-        large_index.create_gsi("lyric", strategy=GSI_INDEX_STRATEGIES.CONTAINS)
 
         assert (
             large_index.gsis["title"]["strategy"] == GSI_INDEX_STRATEGIES.CONTAINS.name

@@ -1,29 +1,30 @@
+import hashlib
 import json
+import math
 import os
 import string
 import time
 import uuid
 from collections import defaultdict
-from enum import Enum
-from typing import Dict, List
-from functools import lru_cache
 from copy import deepcopy
+from enum import Enum
+from functools import lru_cache
+from typing import Dict, List
 
+import nltk
 import orjson
 import pybmoore
 import pygtrie
-import hashlib
 from BTrees.OOBTree import OOBTree
 from lark import Lark
-import nltk
 from nltk.corpus import stopwords
-import math
 
-from jamesql.rewriter import string_query_to_jamesql, grammar as rewriter_grammar
+from jamesql.rewriter import grammar as rewriter_grammar
+from jamesql.rewriter import string_query_to_jamesql
 
 from .script_lang import JameSQLScriptTransformer, grammar
 
-nltk.download('stopwords')
+nltk.download("stopwords")
 
 INDEX_STORE = os.path.join(os.path.expanduser("~"), ".jamesql")
 JOURNAL_FILE = os.path.join(os.getcwd(), "journal.jamesql")
@@ -44,6 +45,7 @@ MAXIMUM_QUERY_STATEMENTS = 20
 
 stop_words = set(stopwords.words("english"))
 
+
 class GSI_INDEX_STRATEGIES(Enum):
     PREFIX = "prefix"
     CONTAINS = "contains"
@@ -61,9 +63,11 @@ class RANKING_STRATEGIES(Enum):
 
 JAMESQL_SCRIPT_SCORE_PARSER = Lark(grammar)
 
+
 @lru_cache()
 def parse_script_score(query: str) -> dict:
     return JAMESQL_SCRIPT_SCORE_PARSER.parse(query)
+
 
 QUERY_TYPE_COMPARISON_METHODS = {
     "greater_than": lambda query_term, gsi: [
@@ -88,7 +92,7 @@ def get_trigrams(line):
 class JameSQL:
     SELF_METHODS = {"close_to": "_close_to"}
 
-    def __init__(self) -> None:
+    def __init__(self, match_limit_for_large_result_pages = 1000) -> None:
         self.global_index = {}
         self.uuids_to_position_in_global_index = {}
         self.gsis = {}
@@ -97,7 +101,13 @@ class JameSQL:
         self.doc_lengths = defaultdict(dict)
         self.autosuggest_on = None
         self.word_counts = defaultdict(int)
-        self.string_query_parser = Lark(rewriter_grammar, parser="earley", propagate_positions=False, maybe_placeholders=False)
+        self.string_query_parser = Lark(
+            rewriter_grammar,
+            parser="earley",
+            propagate_positions=False,
+            maybe_placeholders=False,
+        )
+        self.match_limit_for_large_result_pages = match_limit_for_large_result_pages
 
     def __len__(self):
         return len(self.global_index)
@@ -183,7 +193,9 @@ class JameSQL:
                 self.word_counts[word] += 1
 
                 index[document[index_by]]["count"] += 1
-                index[document[index_by]]["documents"]["uuid"][document["uuid"]].append(pos)
+                index[document[index_by]]["documents"]["uuid"][document["uuid"]].append(
+                    pos
+                )
                 index[document[index_by]]["documents"]["count"][document["uuid"]] += 1
 
         return index
@@ -280,7 +292,12 @@ class JameSQL:
                 return []
 
     def _compute_string_query(
-        self, query: str, query_keys: list = [], boosts={}, fuzzy = False, highlight_keys = []
+        self,
+        query: str,
+        query_keys: list = [],
+        boosts={},
+        fuzzy=False,
+        highlight_keys=[],
     ) -> List[str]:
         """
         Accepts a string query and returns a list of matching documents.
@@ -302,13 +319,18 @@ class JameSQL:
             boosts=boosts,
             fuzzy=fuzzy,
             correct_spelling_index=self,
-            highlight_keys=highlight_keys
+            highlight_keys=highlight_keys,
         )
 
         return query, spelling_substitutions
 
     def string_query_search(
-        self, query: str, query_keys: list = [], start: int = 0, fuzzy = False, highlight_keys = []
+        self,
+        query: str,
+        query_keys: list = [],
+        start: int = 0,
+        fuzzy=False,
+        highlight_keys=[],
     ) -> List[str]:
         """
         Accepts a string query and returns a list of matching documents.
@@ -317,7 +339,9 @@ class JameSQL:
         if query == "":
             return {"documents": []}
 
-        query, spelling_substitutions = self._compute_string_query(query, query_keys, fuzzy=fuzzy, highlight_keys=highlight_keys)
+        query, spelling_substitutions = self._compute_string_query(
+            query, query_keys, fuzzy=fuzzy, highlight_keys=highlight_keys
+        )
 
         if start:
             query["skip"] = start
@@ -534,7 +558,7 @@ class JameSQL:
 
         if query in self.word_counts and self.word_counts[query] > 1:
             return query
-        
+
         # generate all possible segmentations
         # like "coffeeis" -> "coffee is"
 
@@ -547,24 +571,32 @@ class JameSQL:
             right_word = query[i:]
 
             if left_word in self.word_counts and right_word in self.word_counts:
-                segmentations[left_word + " " + right_word] = self.word_counts[left_word] + self.word_counts[right_word]
+                segmentations[left_word + " " + right_word] = (
+                    self.word_counts[left_word] + self.word_counts[right_word]
+                )
 
         if segmentations:
             all_possibilities.update(segmentations)
 
         fuzzy_suggestions = self._turn_query_into_fuzzy_options(query)
-        
-        fuzzy_suggestions = [word for word in fuzzy_suggestions if word in self.word_counts]
+
+        fuzzy_suggestions = [
+            word for word in fuzzy_suggestions if word in self.word_counts
+        ]
 
         if fuzzy_suggestions:
-            all_possibilities.update({word: self.word_counts[word] for word in fuzzy_suggestions})
+            all_possibilities.update(
+                {word: self.word_counts[word] for word in fuzzy_suggestions}
+            )
 
         fuzzy_suggestions_2_edits = []
 
         for word in fuzzy_suggestions:
             fuzzy_suggestions_2_edits.extend(self._turn_query_into_fuzzy_options(word))
 
-        fuzzy_suggestions_2_edits = [word for word in fuzzy_suggestions_2_edits if word in self.word_counts]
+        fuzzy_suggestions_2_edits = [
+            word for word in fuzzy_suggestions_2_edits if word in self.word_counts
+        ]
 
         for word in fuzzy_suggestions_2_edits:
             if word in self.word_counts:
@@ -573,7 +605,7 @@ class JameSQL:
 
         if len(all_possibilities) == 0:
             return query
-        
+
         return max(all_possibilities, key=all_possibilities.get)
 
     def create_gsi(
@@ -641,15 +673,15 @@ class JameSQL:
             # elif isinstance(index_by, str) and sum([len(item.split(" ")) for item in documents_in_indexed_by]) / len(documents_in_indexed_by) < 10:
             #     strategy = GSI_INDEX_STRATEGIES.PREFIX
             # if average contains more than one word, use contains
-            elif (
-                isinstance(documents_in_indexed_by[0], str)
-                and sum([len(item.split(" ")) for item in documents_in_indexed_by]) / len(documents_in_indexed_by)
-            ):
+            elif isinstance(documents_in_indexed_by[0], str) and sum(
+                [len(item.split(" ")) for item in documents_in_indexed_by]
+            ) / len(documents_in_indexed_by):
                 strategy = GSI_INDEX_STRATEGIES.CONTAINS
             # if strings are less than 10 letters, use prefix
             elif (
                 isinstance(documents_in_indexed_by[0], str)
-                and sum([len(item) for item in documents_in_indexed_by]) / len(documents_in_indexed_by)
+                and sum([len(item) for item in documents_in_indexed_by])
+                / len(documents_in_indexed_by)
                 < 10
             ):
                 strategy = GSI_INDEX_STRATEGIES.PREFIX
@@ -750,7 +782,7 @@ class JameSQL:
             ]
 
         end_time = time.time()
-        
+
         if query.get("sort_by") is None:
             query["sort_by"] = "_score"
 
@@ -759,9 +791,7 @@ class JameSQL:
         if query.get("sort_order") == "asc":
             results = sorted(results, key=lambda x: x[results_sort_by])
         else:
-            results = sorted(
-                results, key=lambda x: x[results_sort_by], reverse=True
-            )
+            results = sorted(results, key=lambda x: x[results_sort_by], reverse=True)
 
         if query.get("query_score"):
             tree = parse_script_score(query["query_score"])
@@ -986,7 +1016,9 @@ class JameSQL:
             final_query_terms = []
 
             for query_term in query_terms:
-                final_query_terms.extend(self._turn_query_into_fuzzy_options(query_term))
+                final_query_terms.extend(
+                    self._turn_query_into_fuzzy_options(query_term)
+                )
 
             query_terms = final_query_terms
 
@@ -1163,26 +1195,25 @@ class JameSQL:
                                         )
                                     )
                                 )
-                            
+
                             matching_documents_count = len(uuid_of_documents)
-                            index_length =  len(self.global_index)
+                            index_length = len(self.global_index)
+
+                            inverse_document_frequency = math.log(
+                                index_length / 1 + matching_documents_count
+                            )
+
                             for uuid_of_document in uuid_of_documents:
                                 document_term_frequency = (
                                     gsi[word]["documents"]["count"][uuid_of_document]
                                     / self.doc_lengths[uuid_of_document][query_field]
                                 )
 
-                                inverse_document_frequency = math.log(
-                                    index_length / 1 + matching_documents_count
-                                )
-
                                 tf_idf = (
                                     document_term_frequency * inverse_document_frequency
                                 )
 
-                                matching_document_scores.update(
-                                    {uuid_of_document: tf_idf}
-                                )
+                                matching_document_scores[uuid_of_document] = tf_idf
 
                 elif query_type == "equals":
                     matching_documents.extend(
@@ -1202,9 +1233,13 @@ class JameSQL:
                         if pybmoore.search(query_term, key)
                     ]
                     # flatten
-                    matching_documents.extend([item for sublist in results for item in sublist])
+                    matching_documents.extend(
+                        [item for sublist in results for item in sublist]
+                    )
             elif query_type == "equals":
-                matching_documents.extend([doc_uuid for doc_uuid in gsi.get(query_term, [])])
+                matching_documents.extend(
+                    [doc_uuid for doc_uuid in gsi.get(query_term, [])]
+                )
             elif query_type == "range":
                 lower_bound, upper_bound = query_term
                 results = gsi.values(min=lower_bound, max=upper_bound)
@@ -1236,19 +1271,19 @@ class JameSQL:
                             if match[0] == 0:
                                 matching_documents.extend(value)
                                 break
-                            
-        for doc in matching_documents:
+
+        for doc in matching_documents[:self.match_limit_for_large_result_pages]:
             doc = self.global_index.get(doc)
             if doc is None:
                 continue
 
-            doc["_score"] = (matching_document_scores.get(doc["uuid"], 0) * float(
-                boost_factor
-            )) + doc.get("_score", 0)
+            doc["_score"] = (
+                matching_document_scores.get(doc["uuid"], 0) * float(boost_factor)
+            ) + doc.get("_score", 0)
 
             if doc.get("_context") is None:
                 doc["_context"] = []
 
             doc["_context"] = matching_highlights.get(doc["uuid"], {})
 
-        return {}, matching_documents
+        return {}, matching_documents[:self.match_limit_for_large_result_pages]
