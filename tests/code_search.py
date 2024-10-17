@@ -15,14 +15,6 @@ def pytest_addoption(parser):
     parser.addoption("--benchmark", action="store")
 
 
-@pytest.fixture
-def example_stub_and_query():
-    with open("tests/fixtures/example_stub_and_query.json") as f:
-        query = json.load(f)
-
-    return query
-
-
 @pytest.fixture(scope="session")
 def create_indices(request):
     # open all files in code/*
@@ -113,6 +105,6 @@ def test_code_search(
 
         # run if --benchmark is passed
         if "--benchmark" in sys.argv:
-            response = large_index.string_query_search(query)
+            response = large_index.search(query)
 
             assert float(response["query_time"]) < 0.1

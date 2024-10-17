@@ -618,6 +618,9 @@ class JameSQL:
         if strategy == GSI_INDEX_STRATEGIES.INFER:
             if all([isinstance(item, list) for item in documents_in_indexed_by]):
                 strategy = GSI_INDEX_STRATEGIES.FLAT
+            # if bool, set to flat
+            elif all([isinstance(item, bool) for item in documents_in_indexed_by]):
+                strategy = GSI_INDEX_STRATEGIES.FLAT
             elif all(
                 [
                     isinstance(item, int) or (isinstance(item, str) and item.isdigit())
@@ -637,25 +640,25 @@ class JameSQL:
             # if word count < 10, use prefix
             # elif isinstance(index_by, str) and sum([len(item.split(" ")) for item in documents_in_indexed_by]) / len(documents_in_indexed_by) < 10:
             #     strategy = GSI_INDEX_STRATEGIES.PREFIX
-            # if dictionary, use contains
+            # if average contains more than one word, use contains
             elif (
-                isinstance(index_by, str)
-                and sum(
-                    [
-                        len(item.split(" "))
-                        for item in documents_in_indexed_by[:25]
-                        if item and not isinstance(item, dict)
-                    ]
-                )
-                / len(documents_in_indexed_by)
-                > 20
+                isinstance(documents_in_indexed_by[0], str)
+                and sum([len(item.split(" ")) for item in documents_in_indexed_by]) / len(documents_in_indexed_by)
             ):
                 strategy = GSI_INDEX_STRATEGIES.CONTAINS
+            # if strings are less than 10 letters, use prefix
+            elif (
+                isinstance(documents_in_indexed_by[0], str)
+                and sum([len(item) for item in documents_in_indexed_by]) / len(documents_in_indexed_by)
+                < 10
+            ):
+                strategy = GSI_INDEX_STRATEGIES.PREFIX
             elif index_by == "file_name":
                 strategy = GSI_INDEX_STRATEGIES.TRIGRAM_CODE
             elif all([isinstance(item, dict) for item in documents_in_indexed_by]):
                 strategy = GSI_INDEX_STRATEGIES.NOT_INDEXABLE
             else:
+                print(documents_in_indexed_by)
                 strategy = GSI_INDEX_STRATEGIES.FLAT
 
         if strategy == GSI_INDEX_STRATEGIES.PREFIX:
@@ -747,18 +750,18 @@ class JameSQL:
             ]
 
         end_time = time.time()
+        
+        if query.get("sort_by") is None:
+            query["sort_by"] = "_score"
 
-        if query.get("sort_by") is not None and query.get("sort_by") != "_score":
-            results_sort_by = query["sort_by"]
+        results_sort_by = query["sort_by"]
 
-            if query.get("sort_order") == "asc":
-                results = sorted(results, key=lambda x: x[results_sort_by])
-            else:
-                results = sorted(
-                    results, key=lambda x: x[results_sort_by], reverse=True
-                )
+        if query.get("sort_order") == "asc":
+            results = sorted(results, key=lambda x: x[results_sort_by])
         else:
-            results = sorted(results, key=lambda x: x.get("_score", 1), reverse=True)
+            results = sorted(
+                results, key=lambda x: x[results_sort_by], reverse=True
+            )
 
         if query.get("query_score"):
             tree = parse_script_score(query["query_score"])
@@ -1160,6 +1163,9 @@ class JameSQL:
                                         )
                                     )
                                 )
+                            
+                            matching_documents_count = len(uuid_of_documents)
+                            index_length =  len(self.global_index)
                             for uuid_of_document in uuid_of_documents:
                                 document_term_frequency = (
                                     gsi[word]["documents"]["count"][uuid_of_document]
@@ -1167,7 +1173,7 @@ class JameSQL:
                                 )
 
                                 inverse_document_frequency = math.log(
-                                    len(self.global_index) / 1 + len(uuid_of_documents)
+                                    index_length / 1 + matching_documents_count
                                 )
 
                                 tf_idf = (

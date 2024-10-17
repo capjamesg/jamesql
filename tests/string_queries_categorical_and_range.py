@@ -13,14 +13,6 @@ def pytest_addoption(parser):
     parser.addoption("--benchmark", action="store")
 
 
-@pytest.fixture
-def example_stub_and_query():
-    with open("tests/fixtures/example_stub_and_query.json") as f:
-        query = json.load(f)
-
-    return query
-
-
 @pytest.fixture(scope="session")
 def create_indices(request):
     with open("tests/fixtures/documents_with_categorical_and_numeric_values.json") as f:
@@ -36,7 +28,7 @@ def create_indices(request):
     index.create_gsi("category", strategy=GSI_INDEX_STRATEGIES.FLAT)
     index.create_gsi("listens", strategy=GSI_INDEX_STRATEGIES.NUMERIC)
 
-    with open("tests/fixtures/documents.json") as f:
+    with open("tests/fixtures/documents_with_categorical_and_numeric_values.json") as f:
         documents = json.load(f)
 
     if request.config.getoption("--benchmark") or request.config.getoption(
