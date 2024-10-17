@@ -808,6 +808,44 @@ You can access the JSON of the last transaction issued, sans the `uuid`, by call
 
 If you were in the middle of ingesting data, this could be used to resume the ingestion process from where you left off by allowing you to skip records that were already ingested.
 
+## Reducing Precision for Large Results Pages
+
+By default, JameSQL assigns scores to the top 1,000 documents in each clause in a query. Consider the following query;
+
+```
+query = {
+    "query": {
+        "and": [
+            {
+                "artist": {
+                    "equals": "Taylor Swift"
+                }
+            },
+            {
+                "title": {
+                    "equals": "tolerate it"
+                }
+            }
+        ]
+    },
+    "limit": 10
+}
+```
+
+The `{ "artist": { "equals": "Taylor Swift" } }` clause will return the top 1,000 documents that match the query. The `{ "title": { "equals": "tolerate it" } }` clause will return the top 1,000 documents that match the query.
+
+These will then be combine and sorted to return the 10 documents of the 2,000 processed that have the highest score.
+
+This means that if you have a large number of documents that match a query, you may not get precisely the most relevant documents in the top 10 results, rather an approximation of the most relevant documents.
+
+You can override the number of documents to consider with:
+
+```
+index.match_limit_for_large_result_pages = 10_000
+```
+
+The higher this number, the longer it will take to process results with a large number of matching documents.
+
 ## Web Interface
 
 JameSQL comes with a limited web interface designed for use in testing queries.
