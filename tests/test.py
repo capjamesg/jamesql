@@ -365,13 +365,13 @@ def test_search(
         if number_of_documents_expected > 0:
             assert response["documents"][0]["title"] == top_result_value
 
-        assert float(response["query_time"]) < 0.1
+        assert float(response["query_time"]) < 0.06
 
         # run if --benchmark is passed
         if "--benchmark" in sys.argv:
             response = large_index.search(query)
 
-            assert float(response["query_time"]) < 0.1
+            assert float(response["query_time"]) < 0.06
 
 
 @pytest.mark.parametrize(
@@ -384,7 +384,7 @@ def test_search(
                 "query_score": "(_score + 2)",
             },
             "tolerate it",
-            2.6931471805599454,
+            4.19722457733622,
             DoesNotRaise(),
         ),
         (
@@ -395,7 +395,7 @@ def test_search(
                 "sort_by": "_score",
             },
             "tolerate it",
-            1.3862943611198906,
+            6.591673732008659,
             DoesNotRaise(),
         ),
         (
@@ -405,7 +405,7 @@ def test_search(
                 "sort_by": "title",
             },
             "tolerate it",
-            10.014280344034402,
+            17.660258042044497,
             DoesNotRaise(),  # test searching TF/IDF indexed field
         ),
     ],

@@ -10,21 +10,22 @@ from copy import deepcopy
 from enum import Enum
 from functools import lru_cache
 from typing import Dict, List
+from sortedcontainers import SortedDict
 
-import nltk
 import orjson
 import pybmoore
 import pygtrie
 from BTrees.OOBTree import OOBTree
 from lark import Lark
 from nltk.corpus import stopwords
+from nltk import download
 
 from jamesql.rewriter import grammar as rewriter_grammar
 from jamesql.rewriter import string_query_to_jamesql
 
 from .script_lang import JameSQLScriptTransformer, grammar
 
-nltk.download("stopwords")
+download("stopwords")
 
 INDEX_STORE = os.path.join(os.path.expanduser("~"), ".jamesql")
 JOURNAL_FILE = os.path.join(os.getcwd(), "journal.jamesql")
@@ -108,6 +109,9 @@ class JameSQL:
             maybe_placeholders=False,
         )
         self.match_limit_for_large_result_pages = match_limit_for_large_result_pages
+        self.tf = defaultdict(dict)
+        self.idf = {}
+        self.tf_idf = defaultdict(lambda: SortedDict())
 
     def __len__(self):
         return len(self.global_index)
@@ -184,19 +188,50 @@ class JameSQL:
             }
         )
 
-        for document in documents:
-            for pos, word in enumerate(document[index_by].split()):
-                index[word]["count"] += 1
-                index[word]["documents"]["uuid"][document["uuid"]].append(pos)
-                index[word]["documents"]["count"][document["uuid"]] += 1
-                self.word_counts[word.lower()] += 1
-                self.word_counts[word] += 1
+        total_documents = len(documents)
+        document_frequencies = defaultdict(int)
 
-                index[document[index_by]]["count"] += 1
-                index[document[index_by]]["documents"]["uuid"][document["uuid"]].append(
-                    pos
-                )
-                index[document[index_by]]["documents"]["count"][document["uuid"]] += 1
+        for document in documents:
+            word_count = defaultdict(int)  # Track word counts in this document
+            words = document[index_by].split()  # Tokenize the document
+
+            unique_words_in_document = set()
+
+            index[document[index_by]]["documents"]["uuid"][document["uuid"]].append(0)
+
+            for pos, word in enumerate(document[index_by].split()):
+                word_lower = word.lower()
+
+                # Update index
+                index[word_lower]["count"] += 1
+                index[word_lower]["documents"]["uuid"][document["uuid"]].append(pos)
+                index[word_lower]["documents"]["count"][document["uuid"]] += 1
+
+                self.word_counts[word_lower] += 1
+                self.word_counts[word] += 1
+                word_count[word_lower] += 1
+
+                # Track first occurrence of the word in the document for document frequencies
+                if word_lower not in unique_words_in_document:
+                    document_frequencies[word_lower] += 1
+                    unique_words_in_document.add(word_lower)
+
+            # Compute term frequency (TF) for each word in the document
+            total_words_in_document = len(words)
+            for word, count in word_count.items():
+                self.tf[document["uuid"]][word] = count / total_words_in_document
+
+        # Compute inverse document frequency (IDF) for each word in the corpus
+        for word, doc_count in document_frequencies.items():
+            self.idf[word] = math.log(total_documents / doc_count)
+
+        # Compute TF-IDF for each document
+        for document in documents:
+            for word, tf_value in self.tf[document["uuid"]].items():
+                if self.tf_idf[word].get(tf_value * self.idf[word]):
+                    self.tf_idf[word][tf_value * self.idf[word]].append(document["uuid"])
+                else:
+                    self.tf_idf[word][tf_value * self.idf[word]] = [document["uuid"]]
 
         return index
 
@@ -690,7 +725,6 @@ class JameSQL:
             elif all([isinstance(item, dict) for item in documents_in_indexed_by]):
                 strategy = GSI_INDEX_STRATEGIES.NOT_INDEXABLE
             else:
-                print(documents_in_indexed_by)
                 strategy = GSI_INDEX_STRATEGIES.FLAT
 
         if strategy == GSI_INDEX_STRATEGIES.PREFIX:
@@ -804,7 +838,6 @@ class JameSQL:
 
                 document["_score"] = transformer.transform(tree)
 
-                print(document["_score"])
             results = sorted(results, key=lambda x: x.get("_score", 1), reverse=True)
 
         if query.get("skip"):
@@ -1181,48 +1214,31 @@ class JameSQL:
                                 matching_highlights.update(matches_with_context)
                     else:
                         for word in query_term.split(" "):
-                            if gsi.get(word) is None:
+                            if gsi.get(word.lower()) is None:
                                 continue
 
-                            uuid_of_documents = gsi[word]["documents"]["uuid"]
-                            if len(matching_documents) == 0:
-                                matching_documents.extend(uuid_of_documents)
-                            else:
-                                matching_documents.extend(
-                                    list(
-                                        set(matching_documents).intersection(
-                                            set(uuid_of_documents)
-                                        )
-                                    )
-                                )
+                            results = self.tf_idf[word.lower()]
+                            count = 0
 
-                            matching_documents_count = len(uuid_of_documents)
-                            index_length = len(self.global_index)
+                            for k, v in results.items():
+                                if count > self.match_limit_for_large_result_pages:
+                                    break
+                                
+                                for item in v[:self.match_limit_for_large_result_pages]:
+                                    # skip if word not in document
+                                    if self.gsis[query_field]["gsi"].get(
+                                        word.lower(), {}
+                                    ).get("documents", {}).get("uuid", {}).get(item) is None:
+                                        continue
 
-                            inverse_document_frequency = math.log(
-                                index_length / 1 + matching_documents_count
-                            )
-
-                            for uuid_of_document in uuid_of_documents:
-                                document_term_frequency = (
-                                    gsi[word]["documents"]["count"][uuid_of_document]
-                                    / self.doc_lengths[uuid_of_document][query_field]
-                                )
-
-                                tf_idf = (
-                                    document_term_frequency * inverse_document_frequency
-                                )
-
-                                matching_document_scores[uuid_of_document] = tf_idf
+                                    matching_document_scores.update({item: k})
+                                    matching_documents.append(item)
 
                 elif query_type == "equals":
+                    print(query_term)
+                    print(gsi.get(query_term, {}))
                     matching_documents.extend(
-                        [
-                            doc_uuid
-                            for doc_uuid in gsi.get(query_term, {})
-                            .get("documents", {})
-                            .get("uuid", [])
-                        ]
+                        gsi.get(query_term, {}).get("documents", {}).get("uuid", [])
                     )
                 elif (
                     query_type == "contains" and gsi_type == GSI_INDEX_STRATEGIES.PREFIX

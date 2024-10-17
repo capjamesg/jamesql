@@ -104,10 +104,10 @@ def test_search(
         if number_of_documents_expected > 0:
             assert response["documents"][0]["title"] == top_result_value
 
-        assert float(response["query_time"]) < 0.1
+        assert float(response["query_time"]) < 0.06
 
         # run if --benchmark is passed
         if "--benchmark" in sys.argv:
             response = large_index.search(query)
 
-            assert float(response["query_time"]) < 0.1
+            assert float(response["query_time"]) < 0.06

@@ -131,10 +131,10 @@ def test_simplification_then_search(
             else:
                 assert response["documents"][0]["title"] == top_result_value
 
-        assert float(response["query_time"]) < 0.1
+        assert float(response["query_time"]) < 0.06
 
         # run if --benchmark is passed
         if "--benchmark" in sys.argv:
             response = large_index.string_query_search(query)
 
-            assert float(response["query_time"]) < 0.1
+            assert float(response["query_time"]) < 0.06
