@@ -237,8 +237,17 @@ class JameSQL:
                     self.tf_idf[word][score].append(document["uuid"])
                 else:
                     self.tf_idf[word][score] = [document["uuid"]]
+                    
+                for w in document[index_by].split(" "):
+                    if self.reverse_tf_idf[w].get(index_by) is None:
+                        self.reverse_tf_idf[w][index_by] = {}
 
-                self.reverse_tf_idf[word][document["uuid"]] = score
+                    self.reverse_tf_idf[w][index_by][document["uuid"]] = score
+
+                    if self.reverse_tf_idf[w.lower()].get(index_by) is None:
+                        self.reverse_tf_idf[w.lower()][index_by] = {}
+
+                    self.reverse_tf_idf[w.lower()][index_by][document["uuid"]] = score
 
         return index
 
@@ -823,7 +832,7 @@ class JameSQL:
 
                 metadata, result_ids = self._recursively_parse_query(query["query"])
 
-                results = [self.global_index.get(doc_id) for doc_id in result_ids]
+                results = [self.global_index.get(doc_id) for doc_id in result_ids if doc_id in self.global_index]
 
                 results = orjson.loads(orjson.dumps(results))
 
@@ -855,13 +864,15 @@ class JameSQL:
 
                 for document in results:
                     if document.get("_score") is None:
-                        document["_score"] = 1
+                        document["_score"] = 0
 
                     transformer = JameSQLScriptTransformer(document)
 
                     document["_score"] = transformer.transform(tree)
 
-                results = sorted(results, key=lambda x: x.get("_score", 1), reverse=True)
+                    print(document["_score"])
+
+                results = sorted(results, key=lambda x: x.get("_score", 0), reverse=True)
 
             if query.get("skip"):
                 results = results[int(query["skip"]) :]
@@ -1249,7 +1260,7 @@ class JameSQL:
                             if gsi.get(word) is None:
                                 continue
 
-                            results = self.reverse_tf_idf[word]
+                            results = self.reverse_tf_idf[word].get(query_field, {})
 
                             matching_document_scores = results
                             matching_documents.extend(results.keys())
@@ -1308,7 +1319,7 @@ class JameSQL:
 
         advanced_query_information = {
             "scores": defaultdict(dict),
-            "contexts": defaultdict(dict),
+            "highlights": defaultdict(dict),
         }
         
         for doc in matching_documents[:self.match_limit_for_large_result_pages]:
@@ -1317,6 +1328,6 @@ class JameSQL:
             )
 
             if matching_highlights:
-                advanced_query_information["contexts"][doc] = matching_highlights.get(doc, {})
+                advanced_query_information["highlights"][doc] = matching_highlights.get(doc, {})
 
         return advanced_query_information, matching_documents[:self.match_limit_for_large_result_pages]

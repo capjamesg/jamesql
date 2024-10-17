@@ -74,7 +74,6 @@ def create_indices(request):
                         "category": ["pop", "acoustic"],
                         "uuid": "18fbe44e19a24153b0a22841261db61c",
                         "_score": 1,
-                        "_context": {},
                     }
                 ]
             },
@@ -97,7 +96,6 @@ def create_indices(request):
                         "category": ["pop", "acoustic"],
                         "uuid": "eb11180b16e34467a5d457f7115fda38",
                         "_score": 1,
-                        "_context": {},
                     }
                 ],
                 "acoustic": [
@@ -107,7 +105,6 @@ def create_indices(request):
                         "category": ["pop", "acoustic"],
                         "uuid": "eb11180b16e34467a5d457f7115fda38",
                         "_score": 1,
-                        "_context": {},
                     }
                 ],
             },

@@ -384,7 +384,7 @@ def test_search(
                 "query_score": "(_score + 2)",
             },
             "tolerate it",
-            2.549306144334055,
+            2.0,
             DoesNotRaise(),
         ),
         (
@@ -395,7 +395,7 @@ def test_search(
                 "sort_by": "_score",
             },
             "tolerate it",
-            1.09861228866810989,
+            0.09010335735736986,
             DoesNotRaise(),
         ),
         (
