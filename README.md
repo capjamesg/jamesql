@@ -21,7 +21,7 @@ https://github.com/user-attachments/assets/f1bf931d-6601-4fc8-b43c-d284853bce8f
 To install this project, run:
 
 ```
-pip install git+https://github.com/capjamesg/jamesql
+pip install jamesql
 ```
 
 ## Quickstart
