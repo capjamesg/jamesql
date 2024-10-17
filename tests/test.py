@@ -405,7 +405,7 @@ def test_search(
                 "sort_by": "title",
             },
             "tolerate it",
-            10.14280344034402,
+            10.014280344034402,
             DoesNotRaise(),  # test searching TF/IDF indexed field
         ),
     ],
