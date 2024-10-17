@@ -13,7 +13,6 @@ def pytest_addoption(parser):
     parser.addoption("--benchmark", action="store")
 
 
-
 @pytest.fixture(scope="session")
 def create_indices(request):
     with open("tests/fixtures/documents_with_varied_data_types.json") as f:

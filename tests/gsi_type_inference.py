@@ -9,6 +9,7 @@ from jamesql.index import GSI_INDEX_STRATEGIES
 def pytest_addoption(parser):
     parser.addoption("--benchmark", action="store")
 
+
 @pytest.mark.timeout(20)
 def test_gsi_type_inference(request):
     with open("tests/fixtures/documents_with_varied_data_types.json") as f:
@@ -26,7 +27,9 @@ def test_gsi_type_inference(request):
     assert index.gsis["album_in_stock"]["strategy"] == GSI_INDEX_STRATEGIES.FLAT.name
     assert index.gsis["rating"]["strategy"] == GSI_INDEX_STRATEGIES.NUMERIC.name
     assert index.gsis["metadata"]["strategy"] == GSI_INDEX_STRATEGIES.NOT_INDEXABLE.name
-    assert index.gsis["record_last_updated"]["strategy"] == GSI_INDEX_STRATEGIES.DATE.name
+    assert (
+        index.gsis["record_last_updated"]["strategy"] == GSI_INDEX_STRATEGIES.DATE.name
+    )
 
     with open("tests/fixtures/documents.json") as f:
         documents = json.load(f)
@@ -51,10 +54,27 @@ def test_gsi_type_inference(request):
         large_index.create_gsi("title", strategy=GSI_INDEX_STRATEGIES.CONTAINS)
         large_index.create_gsi("lyric", strategy=GSI_INDEX_STRATEGIES.CONTAINS)
 
-        assert large_index.gsis["title"]["strategy"] == GSI_INDEX_STRATEGIES.CONTAINS.name
-        assert large_index.gsis["lyric"]["strategy"] == GSI_INDEX_STRATEGIES.CONTAINS.name
-        assert large_index.gsis["listens"]["strategy"] == GSI_INDEX_STRATEGIES.NUMERIC.name
-        assert large_index.gsis["album_in_stock"]["strategy"] == GSI_INDEX_STRATEGIES.FLAT.name
-        assert large_index.gsis["rating"]["strategy"] == GSI_INDEX_STRATEGIES.NUMERIC.name
-        assert large_index.gsis["metadata"]["strategy"] == GSI_INDEX_STRATEGIES.NOT_INDEXABLE.name
-        assert large_index.gsis["record_last_updated"]["strategy"] == GSI_INDEX_STRATEGIES.DATE.name
+        assert (
+            large_index.gsis["title"]["strategy"] == GSI_INDEX_STRATEGIES.CONTAINS.name
+        )
+        assert (
+            large_index.gsis["lyric"]["strategy"] == GSI_INDEX_STRATEGIES.CONTAINS.name
+        )
+        assert (
+            large_index.gsis["listens"]["strategy"] == GSI_INDEX_STRATEGIES.NUMERIC.name
+        )
+        assert (
+            large_index.gsis["album_in_stock"]["strategy"]
+            == GSI_INDEX_STRATEGIES.FLAT.name
+        )
+        assert (
+            large_index.gsis["rating"]["strategy"] == GSI_INDEX_STRATEGIES.NUMERIC.name
+        )
+        assert (
+            large_index.gsis["metadata"]["strategy"]
+            == GSI_INDEX_STRATEGIES.NOT_INDEXABLE.name
+        )
+        assert (
+            large_index.gsis["record_last_updated"]["strategy"]
+            == GSI_INDEX_STRATEGIES.DATE.name
+        )

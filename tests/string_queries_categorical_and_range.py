@@ -199,7 +199,7 @@ def test_search(
         assert result == {}
 
         # order documents alphabetically by title
-    
+
         response["documents"] = sorted(response["documents"], key=lambda x: x["title"])
 
         if number_of_documents_expected > 0:

@@ -117,132 +117,162 @@ def create_indices(request):
         ),  # test multi-word search
         (
             "St*rted",
-            {'query': {'or': [{'or': [{'title': {'wildcard': 'St*rted'}}, {'lyric': {'wildcard': 'St*rted'}}]}]}, 'limit': 10},
+            {
+                "query": {
+                    "or": [
+                        {
+                            "or": [
+                                {"title": {"wildcard": "St*rted"}},
+                                {"lyric": {"wildcard": "St*rted"}},
+                            ]
+                        }
+                    ]
+                },
+                "limit": 10,
+            },
             1,
             "The Bolter",
             DoesNotRaise(),
         ),  # test multi-word search
-                (
-                    "-started -with mural",
-                    {
-                        "query": {
-                            "and": [
-                                {
-                                    "not": {
-                                        "or": [
-                                            {"title": {"contains": "started"}},
-                                            {"lyric": {"contains": "started"}},
-                                        ]
-                                    }
-                                },
-                                {
-                                    "not": {
-                                        "or": [
-                                            {"title": {"contains": "with"}},
-                                            {"lyric": {"contains": "with"}},
-                                        ]
-                                    }
-                                },
-                                {
-                                    "or": [
-                                        {"title": {"contains": "mural"}},
-                                        {"lyric": {"contains": "mural"}},
-                                    ]
-                                },
+        (
+            "-started -with mural",
+            {
+                "query": {
+                    "and": [
+                        {
+                            "not": {
+                                "or": [
+                                    {"title": {"contains": "started"}},
+                                    {"lyric": {"contains": "started"}},
+                                ]
+                            }
+                        },
+                        {
+                            "not": {
+                                "or": [
+                                    {"title": {"contains": "with"}},
+                                    {"lyric": {"contains": "with"}},
+                                ]
+                            }
+                        },
+                        {
+                            "or": [
+                                {"title": {"contains": "mural"}},
+                                {"lyric": {"contains": "mural"}},
                             ]
                         },
-                        "limit": 10,
-                    },
-                    1,
-                    "tolerate it",
-                    DoesNotRaise(),
-                ),  # two negation queries
-                (
-                    "title:tolerate lyric:I",
-                    {
-                        "query": {
-                            "and": [
-                                {"title": {"contains": "tolerate"}},
+                    ]
+                },
+                "limit": 10,
+            },
+            1,
+            "tolerate it",
+            DoesNotRaise(),
+        ),  # two negation queries
+        (
+            "title:tolerate lyric:I",
+            {
+                "query": {
+                    "and": [
+                        {"title": {"contains": "tolerate"}},
+                        {"lyric": {"contains": "I"}},
+                    ]
+                },
+                "limit": 10,
+            },
+            1,
+            "tolerate it",
+            DoesNotRaise(),
+        ),  # two field queries
+        (
+            "",
+            {"query": {}},
+            0,
+            "",
+            DoesNotRaise(),
+        ),  # blank query
+        (
+            "Started sky",
+            {
+                "query": {
+                    "or": [
+                        {
+                            "or": [
+                                {"title": {"contains": "Started"}},
+                                {"lyric": {"contains": "Started"}},
+                            ]
+                        },
+                        {
+                            "or": [
+                                {"title": {"contains": "sky"}},
+                                {"lyric": {"contains": "sky"}},
+                            ]
+                        },
+                    ]
+                },
+                "limit": 10,
+            },
+            3,
+            "The Bolter",
+            DoesNotRaise(),
+        ),  # test OR argument
+        (
+            "I -still",
+            {
+                "query": {
+                    "and": [
+                        {
+                            "or": [
                                 {"lyric": {"contains": "I"}},
+                                {"title": {"contains": "I"}},
                             ]
                         },
-                        "limit": 10,
-                    },
-                    1,
-                    "tolerate it",
-                    DoesNotRaise(),
-                ),  # two field queries
-                (
-                    "",
-                    {"query": {}},
-                    0,
-                    "",
-                    DoesNotRaise(),
-                ),  # blank query
-                (
-                    "Started sky",
-                    {'query': {'or': [{'or': [{'title': {'contains': 'Started'}}, {'lyric': {'contains': 'Started'}}]}, {'or': [{'title': {'contains': 'sky'}}, {'lyric': {'contains': 'sky'}}]}]}, 'limit': 10},
-                    3,
-                    "The Bolter",
-                    DoesNotRaise(),
-                ),  # test OR argument
-                (
-                    "I -still",
-                    {
-                        "query": {
-                            "and": [
-                                {
-                                    "or": [
-                                        {"lyric": {"contains": "I"}},
-                                        {"title": {"contains": "I"}},
-                                    ]
-                                },
-                                {
-                                    "not": {
-                                        "or": [
-                                            {"lyric": {"contains": "still"}},
-                                            {"title": {"contains": "still"}},
-                                        ]
-                                    }
-                                },
-                            ]
+                        {
+                            "not": {
+                                "or": [
+                                    {"lyric": {"contains": "still"}},
+                                    {"title": {"contains": "still"}},
+                                ]
+                            }
                         },
-                        "limit": 10,
-                    },
-                    1,
-                    "tolerate it",
-                    DoesNotRaise(),
-                ),  # test negation argument
-                (
-                    "-started -mural -title:'The'",
-                    {
-                        "query": {
-                            "and": [
-                                {
-                                    "not": {
-                                        "or": [
-                                            {"title": {"contains": "started"}},
-                                            {"lyric": {"contains": "started"}},
-                                        ]
-                                    }
-                                },
-                                {
-                                    "not": {
-                                        "or": [
-                                            {"title": {"contains": "mural"}},
-                                            {"lyric": {"contains": "mural"}},
-                                        ]
-                                    }
-                                },
-                                {"not": {"title": {"contains": "The"}}},
-                            ]
+                    ]
+                },
+                "limit": 10,
+            },
+            1,
+            "tolerate it",
+            DoesNotRaise(),
+        ),  # test negation argument
+        (
+            "-started -mural -title:'The'",
+            {
+                "query": {
+                    "and": [
+                        {
+                            "not": {
+                                "or": [
+                                    {"title": {"contains": "started"}},
+                                    {"lyric": {"contains": "started"}},
+                                ]
+                            }
                         },
-                        "limit": 10,
-                    },
-                    1,
-                    "my tears ricochet",
-                    DoesNotRaise(),
-                ),  # test negation on field
+                        {
+                            "not": {
+                                "or": [
+                                    {"title": {"contains": "mural"}},
+                                    {"lyric": {"contains": "mural"}},
+                                ]
+                            }
+                        },
+                        {"not": {"title": {"contains": "The"}}},
+                    ]
+                },
+                "limit": 10,
+            },
+            1,
+            "my tears ricochet",
+            DoesNotRaise(),
+        ),  # test negation on field
     ],
 )
 @pytest.mark.timeout(20)

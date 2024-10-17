@@ -12,6 +12,7 @@ from jamesql.index import GSI_INDEX_STRATEGIES
 def pytest_addoption(parser):
     parser.addoption("--benchmark", action="store")
 
+
 @pytest.fixture(scope="session")
 def create_indices(request):
     with open("tests/fixtures/documents.json") as f:
@@ -56,39 +57,18 @@ def create_indices(request):
 @pytest.mark.parametrize(
     "query, corrected_query",
     [
-        (
-            "tolerat",
-            "tolerate"
-        ),
-        (
-            "tolerateit",
-            "tolerate it"
-        ), # test segmentation
+        ("tolerat", "tolerate"),
+        ("tolerateit", "tolerate it"),  # test segmentation
         (
             "startedwith",
-            "started with"
-        ), # query word that appears uppercase in corpus of text
-        (
-            "toleratt",
-            "tolerate"
-        ),
-        (
-            "toleratt",
-            "tolerate"
-        ),
-        (
-            "tolerate",
-            "tolerate"
-        ),
-        (
-            "toler",
-            "toler"
-        ), # not in index
-        (
-            "cod",
-            "cod"
-        ), # not in index
-    ]
+            "started with",
+        ),  # query word that appears uppercase in corpus of text
+        ("toleratt", "tolerate"),
+        ("toleratt", "tolerate"),
+        ("tolerate", "tolerate"),
+        ("toler", "toler"),  # not in index
+        ("cod", "cod"),  # not in index
+    ],
 )
 def test_spelling_correction(create_indices, query, corrected_query):
     index = create_indices[0]

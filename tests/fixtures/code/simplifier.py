@@ -1,7 +1,7 @@
 def normalize_operator_query(t):
     if isinstance(t, str):
         return t
-    
+
     return "_".join(t)
 
 
@@ -43,6 +43,5 @@ def simplifier(terms):
         ):
             if t[1] in outer_terms:
                 to_remove.add(t[1])
-    
-    return [i for i in new_terms if normalize_operator_query(i) not in to_remove]
 
+    return [i for i in new_terms if normalize_operator_query(i) not in to_remove]

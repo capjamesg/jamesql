@@ -1,4 +1,6 @@
+import hashlib
 import json
+import math
 import os
 import string
 import time
@@ -10,11 +12,8 @@ from typing import Dict, List
 import orjson
 import pybmoore
 import pygtrie
-import hashlib
-import math
 from BTrees.OOBTree import OOBTree
-from lark import   Lark
-
+from lark import Lark
 
 from jamesql.rewriter import string_query_to_jamesql
 
@@ -70,8 +69,10 @@ QUERY_TYPE_COMPARISON_METHODS = {
     ],
 }
 
+
 def get_trigrams(line):
     return [line[i : i + 3] for i in range(len(line) - 2)]
+
 
 class JameSQL:
     SELF_METHODS = {"close_to": "_close_to"}
@@ -238,17 +239,19 @@ class JameSQL:
 
         self.autosuggest_on = field
 
-    def autosuggest(self, query: str, match_full_record = False, limit = 5) -> List[str]:
+    def autosuggest(self, query: str, match_full_record=False, limit=5) -> List[str]:
         """
         Accepts a query and returns a list of suggestions.
         """
         if not self.autosuggest_index or not query:
             return []
-        
+
         if match_full_record:
             results = []
-            
-            for i in self.autosuggest_index.itervalues(prefix=query.lower(), shallow = False):
+
+            for i in self.autosuggest_index.itervalues(
+                prefix=query.lower(), shallow=False
+            ):
                 if self.autosuggest_index.has_subtrie(i):
                     continue
                 results.append(i)
@@ -256,7 +259,6 @@ class JameSQL:
             return results[0:limit]
         else:
             return self.autosuggest_index.keys(prefix=query.lower())[0:limit]
-
 
     def _compute_string_query(self, query: str, query_keys: list = []) -> List[str]:
         """
@@ -359,7 +361,7 @@ class JameSQL:
         for key, value in document.items():
             if key not in self.gsis:
                 continue
-            
+
             if self.gsis[key]["strategy"] == GSI_INDEX_STRATEGIES.CONTAINS.name:
                 if not self.gsis[key]["gsi"].get(value):
                     self.gsis[key]["gsi"][value] = {
@@ -425,15 +427,15 @@ class JameSQL:
                         if not self.gsis[key]["gsi"].get(trigram):
                             self.gsis[key]["gsi"][trigram] = []
 
-                        self.gsis[key]["gsi"][trigram].append((file_name, line_num, document["uuid"]))
+                        self.gsis[key]["gsi"][trigram].append(
+                            (file_name, line_num, document["uuid"])
+                        )
                         self.gsis[key]["id2line"][f"{file_name}:{line_num}"] = line
                 self.gsis[key]["doc_lengths"][file_name] = total_lines
             else:
                 raise ValueError(
                     "Invalid GSI strategy. Must be one of: "
-                    + ", ".join(
-                        [strategy.name for strategy in GSI_INDEX_STRATEGIES]
-                    )
+                    + ", ".join([strategy.name for strategy in GSI_INDEX_STRATEGIES])
                     + "."
                 )
 
@@ -896,7 +898,9 @@ class JameSQL:
                         )
 
                     # candidate[2] is the document uuid
-                    matching_documents.extend([candidate[2] for candidate in candidates])
+                    matching_documents.extend(
+                        [candidate[2] for candidate in candidates]
+                    )
 
                     # get line numbers
                     for candidate in candidates:
@@ -1089,6 +1093,5 @@ class JameSQL:
                 doc["_context"] = []
 
             doc["_context"].extend(matching_highlights.get(doc["uuid"], {}))
-
 
         return {}, matching_documents

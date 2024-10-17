@@ -11,6 +11,7 @@ from jamesql.index import GSI_INDEX_STRATEGIES
 def pytest_addoption(parser):
     parser.addoption("--benchmark", action="store")
 
+
 @pytest.fixture(scope="session")
 def create_indices(request):
     with open("tests/fixtures/documents_with_numeric_values.json") as f:

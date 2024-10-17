@@ -61,31 +61,13 @@ def create_indices(request):
 @pytest.mark.parametrize(
     "query, suggestion",
     [
-        (
-            "tolerat",
-            "tolerate"
-        ),
-        (
-            "toler",
-            "tolerate"
-        ),
-        (
-            "th",
-            "the"
-        ),
-        (
-            "b",
-            "bolter"
-        ),
-        (
-            "he",
-            ""
-        ), # not in index; part of another word
-        (
-            "cod",
-            ""
-        ), # not in index
-    ]
+        ("tolerat", "tolerate"),
+        ("toler", "tolerate"),
+        ("th", "the"),
+        ("b", "bolter"),
+        ("he", ""),  # not in index; part of another word
+        ("cod", ""),  # not in index
+    ],
 )
 def test_autosuggest(create_indices, query, suggestion):
     index = create_indices[0]

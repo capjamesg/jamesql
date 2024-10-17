@@ -2,8 +2,7 @@ import json
 from contextlib import ExitStack as DoesNotRaise
 
 import pytest
-from lark import   Lark
-
+from lark import Lark
 from pytest import raises
 
 from jamesql import JameSQL

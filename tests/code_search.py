@@ -11,6 +11,7 @@ from jamesql.index import GSI_INDEX_STRATEGIES
 
 CODE_BASE_DIR = "tests/fixtures/code"
 
+
 def pytest_addoption(parser):
     parser.addoption("--benchmark", action="store")
 
@@ -94,7 +95,9 @@ def test_code_search(
         response = index.search(query)
 
         # sort response by documents[0]["title"] to make it easier to compare
-        response["documents"] = sorted(response["documents"], key=lambda x: x["file_name"])
+        response["documents"] = sorted(
+            response["documents"], key=lambda x: x["file_name"]
+        )
 
         assert len(response["documents"]) == number_of_documents_expected
 

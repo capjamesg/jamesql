@@ -3,11 +3,11 @@ import sys
 from contextlib import ExitStack as DoesNotRaise
 
 import pytest
+from lark import Lark
 
 from jamesql import JameSQL
 from jamesql.index import GSI_INDEX_STRATEGIES
-from jamesql.rewriter import simplify_string_query, grammar
-from lark import   Lark
+from jamesql.rewriter import grammar, simplify_string_query
 
 
 def pytest_addoption(parser):
@@ -102,7 +102,7 @@ def create_indices(request):
             "",
             DoesNotRaise(),
         ),  # test double negation of in clause
-    ]
+    ],
 )
 @pytest.mark.timeout(20)
 def test_simplification_then_search(

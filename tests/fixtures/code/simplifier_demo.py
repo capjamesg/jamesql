@@ -1,9 +1,11 @@
-from collections import defaultdict
 import math
 import os
+from collections import defaultdict
+
 
 def get_trigrams(line):
     return [line[i : i + 3] for i in range(len(line) - 2)]
+
 
 index = defaultdict(list)
 
@@ -45,7 +47,9 @@ for trigram in trigrams:
 
 for file, line_num in candidates:
     print(f"{file.name}:{line_num}")
-    for i in range(max(0, line_num - context), min(doc_lengths[file.name], line_num + context + 1)):
+    for i in range(
+        max(0, line_num - context), min(doc_lengths[file.name], line_num + context + 1)
+    ):
         line = id2line[f"{file.name}:{i}"]
         print(f"{i}: {line}")
 

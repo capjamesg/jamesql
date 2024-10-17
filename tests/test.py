@@ -35,7 +35,7 @@ def create_indices(request):
 
     index.create_gsi("title", strategy=GSI_INDEX_STRATEGIES.CONTAINS)
     index.create_gsi("lyric", strategy=GSI_INDEX_STRATEGIES.CONTAINS)
-    
+
     if request.config.getoption("--benchmark") or request.config.getoption(
         "--long-benchmark"
     ):
@@ -189,7 +189,13 @@ def create_indices(request):
         ),  # test fuzzy on contains
         (
             {
-                "query": {"lyric": {"starts_with": "Startee with", "fuzzy": True, "strict": True}},
+                "query": {
+                    "lyric": {
+                        "starts_with": "Startee with",
+                        "fuzzy": True,
+                        "strict": True,
+                    }
+                },
                 "limit": 10,
                 "sort_by": "title",
             },
@@ -400,7 +406,7 @@ def test_search(
             },
             "tolerate it",
             10.014280344034402,
-            DoesNotRaise(), # test searching TF/IDF indexed field
+            DoesNotRaise(),  # test searching TF/IDF indexed field
         ),
     ],
 )
