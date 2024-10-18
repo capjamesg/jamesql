@@ -54,7 +54,7 @@ class JameSQLScriptTransformer(Transformer):
     def decay(self, items):
         # decay by half for every 30 days
         # item is datetime.dateime object
-        days_since_post = (datetime.datetime.now() - items[0]).days
+        days_since_post = (datetime.datetime.now() - datetime.datetime.strptime(items[0], "%Y-%m-%dT%H:%M:%S")).days
 
         return 0.9 ** (days_since_post / 30)
 

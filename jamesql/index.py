@@ -238,16 +238,16 @@ class JameSQL:
                 else:
                     self.tf_idf[word][score] = [document["uuid"]]
                     
-                for w in document[index_by].split(" "):
-                    if self.reverse_tf_idf[w].get(index_by) is None:
-                        self.reverse_tf_idf[w][index_by] = {}
+            for w in document[index_by].split(" "):
+                if self.reverse_tf_idf[w].get(index_by) is None:
+                    self.reverse_tf_idf[w][index_by] = {}
 
-                    self.reverse_tf_idf[w][index_by][document["uuid"]] = score
+                self.reverse_tf_idf[w][index_by][document["uuid"]] = score
 
-                    if self.reverse_tf_idf[w.lower()].get(index_by) is None:
-                        self.reverse_tf_idf[w.lower()][index_by] = {}
+                if self.reverse_tf_idf[w.lower()].get(index_by) is None:
+                    self.reverse_tf_idf[w.lower()][index_by] = {}
 
-                    self.reverse_tf_idf[w.lower()][index_by][document["uuid"]] = score
+                self.reverse_tf_idf[w.lower()][index_by][document["uuid"]] = score
 
         return index
 

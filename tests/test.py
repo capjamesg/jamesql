@@ -374,6 +374,9 @@ def test_search(
             assert float(response["query_time"]) < 0.06
 
 
+# TODO: TF/IDF needs to be calculated after all documents have been inserted
+# Otherwise TF/IDF score will vary on document insertion order
+# which we don't want
 @pytest.mark.parametrize(
     "query, top_document_name, top_document_score, raises_exception",
     [
