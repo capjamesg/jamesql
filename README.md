@@ -890,7 +890,7 @@ In development, the goal should be making the query engine as fast as possible. 
 
 ## Deployment considerations
 
-JameSQL should work when used in multiple threads. Thread locks are implemented for both read and write operations, to ensure consistency.
+Progress is being made on making JameSQL thread safe, but there are still some issues to work out. It is recommended that you run JameSQL in a single-threaded environment.
 
 It is recommended that you cache responses from JameSQL. While it takes < 1ms to process many JameSQL queries, reading a set of results from a cache will be faster.
 
