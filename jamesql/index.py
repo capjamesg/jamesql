@@ -870,8 +870,6 @@ class JameSQL:
 
                     document["_score"] = transformer.transform(tree)
 
-                    print(document["_score"])
-
                 results = sorted(results, key=lambda x: x.get("_score", 0), reverse=True)
 
             if query.get("skip"):
@@ -1254,7 +1252,7 @@ class JameSQL:
 
                                 matching_highlights.update(matches_with_context)
                     else:
-                        for word in query_term.split(" "):
+                        for word in str(query_term).split(" "):
                             word = word.lower()
                             
                             if gsi.get(word) is None:

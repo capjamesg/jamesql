@@ -68,6 +68,13 @@ def create_indices(request):
             DoesNotRaise(),
         ),  # test negation simplification with empty string result
         (
+            "100 100",
+            "100",
+            0,
+            "",
+            DoesNotRaise(),
+        ),  # test numeric query simplification
+        (
             "screaming -sky",
             "screaming -sky",
             0,

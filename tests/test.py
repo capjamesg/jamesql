@@ -225,6 +225,36 @@ def create_indices(request):
         ),  # test starts_with
         (
             {
+                "query": {"lyric": {"contains": "100"}},
+                "limit": 10,
+                "sort_by": "lyric"
+            },
+            0,
+            "",
+            DoesNotRaise(),
+        ),  # test numeric query
+        (
+            {
+                "query": {"lyric": {"contains": 100}},
+                "limit": 10,
+                "sort_by": "lyric"
+            },
+            0,
+            "",
+            DoesNotRaise(),
+        ),  # test numeric query cast as int
+        (
+            {
+                "query": {"lyric": {"contains": 100.001}},
+                "limit": 10,
+                "sort_by": "lyric"
+            },
+            0,
+            "",
+            DoesNotRaise(),
+        ),  # test numeric query cast as float
+        (
+            {
                 "query": {"lyric": {"starts_with": "started with"}},
                 "limit": 10,
                 "sort_by": "title",
