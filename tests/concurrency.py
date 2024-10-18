@@ -30,7 +30,7 @@ def test_threading():
 
     threads = []
 
-    for i in range(25):
+    for i in range(2500):
         t = threading.Thread(target=query, args=(i,))
         threads.append(t)
         t.start()
