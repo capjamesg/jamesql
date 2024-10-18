@@ -890,7 +890,7 @@ In development, the goal should be making the query engine as fast as possible. 
 
 ## Deployment considerations
 
-JameSQL is not thread safe. This is because non-atomic mutations are made to record `_score` values during query computation. This may be fixed in a future release, although there are no immediate plans to do so.
+JameSQL should work when used in multiple threads. Thread locks are implemented for both read and write operations, to ensure consistency.
 
 It is recommended that you cache responses from JameSQL. While it takes < 1ms to process many JameSQL queries, reading a set of results from a cache will be faster.
 
