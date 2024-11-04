@@ -2,7 +2,7 @@ import os
 
 BASE_URLS = {
     "local": os.getcwd(),
-    "production": "https://example.com",
+    "production": "https://jamesg.blog/jamesql/",
 }
 
 SITE_ENV = os.environ.get("SITE_ENV", "local")
@@ -15,3 +15,4 @@ HOOKS = {
 }
 SITE_STATE = {}
 
+BASE_URL = BASE_URLS[SITE_ENV]
