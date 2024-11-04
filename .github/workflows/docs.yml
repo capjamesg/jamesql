@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip pygments bs4 lxml
-          python3 -m pip install git+https://github.com/capjamesg/aurora
+          pip install git+https://github.com/capjamesg/aurora
           pip install -e .
           cd docs
       - name: Build main site
