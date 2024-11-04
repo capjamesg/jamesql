@@ -14,7 +14,7 @@ jobs:
         python-version: [3.13]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -22,8 +22,9 @@ jobs:
           cache: 'pip'
       - name: Install dependencies
         run: |
-          python3 -m pip install --upgrade pip pygments bs4 lxml
           python3 -m pip install --upgrade pip git+https://github.com/capjamesg/aurora
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          python3 -m pip install --upgrade pip pygments bs4 lxml
           pip3 install -e .
           cd docs
       - name: Build main site
