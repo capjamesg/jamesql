@@ -22,9 +22,8 @@ jobs:
           cache: 'pip'
       - name: Install dependencies
         run: |
-          apt-get install -y git
           python3 -m pip install --upgrade pip pygments bs4 lxml
-          pip3 install git+https://github.com/capjamesg/aurora
+          python3 -m pip install --upgrade pip git+https://github.com/capjamesg/aurora
           pip3 install -e .
           cd docs
       - name: Build main site
