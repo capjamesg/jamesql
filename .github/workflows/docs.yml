@@ -22,7 +22,7 @@ jobs:
           cache: 'pip'
       - name: Install dependencies
         run: |
-          sudo apt-get install -y git
+          apt-get install -y git
           python3 -m pip install --upgrade pip pygments bs4 lxml
           pip3 install git+https://github.com/capjamesg/aurora
           pip3 install -e .
