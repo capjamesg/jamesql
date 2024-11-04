@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>JameSQL</title>
+<style>
+
+@font-face {
+  font-family: "Standard";
+  src: url("standard-book-webfont.woff2");
+  font-display: swap;
+
+}
+        html {
+            background-color: #f9f9f9;
+            font-family: "Standard", sans-serif;
+            padding: 0;
+            margin: 0;
+            box-sizing: border-box;
+            border-top: 5px solid royalblue;
+        }
+        h1, h2 {
+            margin-bottom: 0.25em;
+            padding-bottom: 0;
+        }
+        h2 {
+            margin-top: 1.25em;
+        }
+        h1 + p, h2 + p {
+            margin-top: 0;
+            padding-top: 0;
+        }
+        body {
+            padding: 0;
+            margin: 0;
+        }
+        * {
+            line-height: 1.5;
+            color: black;
+        }
+        #main {
+            display: grid;
+            grid-template-columns: 1fr 4fr;
+        }
+        h3 {
+            text-transform: uppercase;
+            font-size: 0.9em;
+            margin-bottom: 0.25em;
+            margin-top: 1.5em;
+        }
+        aside {
+            border-right: 0.5px solid rgb(57, 57, 57);
+            padding-right: 1.5em;
+        }
+        .toc h3 {
+            margin: 0;
+        }
+        aside ul {
+            list-style-type: none;
+            box-sizing: border-box;
+            max-width: 100%;
+            padding-left: 1em;
+        }
+        aside li {
+            list-style-type: none;
+            padding: 0.5em 0;
+            /*! border-radius: 0.5em; */
+        }
+        aside li, pre {
+            background-color: white;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.1);
+
+            padding-left: 1em;
+            padding-right: 1em;
+        }
+        pre {
+            padding: 1em;
+            text-wrap: stable;
+        }
+        aside li svg {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            margin-right: 0.5em;
+            align-self: center;
+        }
+        nav {
+            /*! background-color: #8da9ff1c; */
+            color: white;
+            padding: 0.5em;
+            /*! padding-left: 2.5em; */
+            border-bottom: 0.5px solid rgb(57, 57, 57);
+        }
+        .logo-head {
+            display: flex;align-content: center;align-items: center;margin-left: 0.5em;
+        }
+        nav h1 {
+            font-size: 2em;
+            padding: 0;
+            margin: 0;
+        }
+        ul a {
+            color: black;
+            text-decoration: none;
+        }
+        article a {
+            color: royalblue;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .focused {
+            border-left: 3px solid royalblue;
+            padding-left: 0.5em;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        code {
+            background-color: #f1f1f1;
+        }
+        body {
+            height: 100vh;
+        }
+        aside, main {
+            height: calc(100vh - 4em);
+            overflow-y: auto;
+        }
+        body {
+            scrollbar-width: none;
+        }
+        h1 {
+            margin-top: 0;
+        }
+        main {
+            display: grid;
+            gap: 1em;
+            grid-template-columns: 8fr 2fr;
+        }
+        main aside {
+            position: sticky;
+            /*! top: 1em; */
+            padding-top: 1em;
+        }
+        main aside h2 {
+            font-size: 1.25em;
+        }
+        main aside h3 {
+            font-size: 1em;
+            text-transform: none;
+            font-weight: normal;
+        }
+        nav {
+            display: grid;
+            list-style-type: none;
+            /*! padding: 1em; */
+            /*! padding-left: 2.5em; */
+            /*! padding-right: 2em; */
+            /*! margin: 0; */
+            grid-template-columns: 1fr 4fr;
+        }
+        nav ul {
+            display: flex;
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        nav ul li {
+            margin-right: 1em;
+        }
+        article li {
+            margin-bottom: 1em;
+        }
+        .toc {
+            border-left: 0.5px solid rgb(57, 57, 57);
+            padding-left: 1em;
+        }
+        @media (max-width: 800px) {
+            #main {
+                grid-template-columns: 1fr;
+            }
+            aside {
+                display: none;
+            }
+            main {
+                grid-template-columns: 1fr;
+            }
+            article {
+                max-width: 100%;
+                padding: 1em;
+            }
+        }
+        h1 {
+            font-size: 1.5em;
+        }
+        .subtitle {
+            font-size: 1em;
+        }
+        .pre-inner {
+            padding: 1em;
+        }
+        .code-head {
+            background-color: #f1f1f1;
+            padding: 0.5em;
+            padding-left: 1em;
+            border-bottom: 0.5px solid rgb(57, 57, 57);
+        }
+        th {
+            text-align: left;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            border-spacing: 1em;
+            background: white;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        td, th {
+            padding: 0.5em;
+        }
+        tr:first-child {
+            margin-right: 1em;
+        }
+        tr {
+            border-bottom: 0.5px solid rgb(57, 57, 57);
+        }
+        input {
+            padding: 0.5em;
+            border: 0.5px solid rgb(57, 57, 57);
+            width: 100%;
+            box-sizing: border-box;
+            background-color: rgb(215, 236, 252);
+        }
+
+        .nav-title {
+            padding-left: 2em;
+        }
+        article {
+            padding-left: 2em;
+        }
+        .manual {
+            display: block;margin: 0;padding: 0;
+        }
+        svg {
+            display: block;
+            margin-left: auto;
+            margin-right: 1em;
+            max-height: 1.5em;
+        }
+        .nav-title svg {
+            display: none;
+        }
+        nav a {
+            text-decoration: none;
+        }
+        @media (max-width: 800px) {
+            nav {
+                flex-direction: column;
+                align-items: center;
+            }
+            nav ul {
+                display: block;
+            }
+            nav ul li {
+                margin-right: 0;
+                margin-bottom: 0.5em;
+            }
+            .logo-head {
+                display: block;
+            }
+            h1 {
+                font-size: 1.25em;
+                margin-left: 0;
+            }
+            .manual {
+                margin-left: 1em;
+            }
+            article {
+                padding-left: 1em;
+            }
+            nav {
+                display: block;
+                padding: 0;
+            }
+            #title {
+                font-size: 1em;
+            }
+            .nav-title {
+                padding-left: 0;
+            }
+            nav img {
+                display: none;
+            }
+            .nav-title {
+                background-color: white;
+                box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.1);
+                padding: 0.5em;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+            .nav-title:hover {
+                background-color: #f7f7f7;
+                cursor: pointer;
+            }
+            html {
+                border-top-width: 5px;
+            }
+            .logo-head {
+                background-color: rgba(65, 105, 225, 0.198);
+                color: white;
+                display: flex;
+                align-items: center;
+                padding: 0.5em;
+                margin: 0;
+                padding-left: 0.5em;
+            }
+            .logo-head div {
+                display: flex;
+                align-items: center;
+            }
+            table {
+                overflow-x: auto;
+                overflow-y: scroll;
+            }
+        }
+    </style>
+</head>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelector(".nav-title").addEventListener("click", function() {
+            document.querySelector(".pages").style.display = "block";
+        });
+    });
+</script>
+<body><style>pre { line-height: 125%; }
+td.linenos .normal { color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px; }
+span.linenos { color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px; }
+td.linenos .special { color: #000000; background-color: #ffffc0; padding-left: 5px; padding-right: 5px; }
+span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 5px; padding-right: 5px; }
+.highlight .hll { background-color: #ffffcc }
+.highlight { background: #f8f8f8; }
+.highlight .c { color: #3D7B7B; font-style: italic } /* Comment */
+.highlight .err { border: 1px solid #FF0000 } /* Error */
+.highlight .k { color: #008000; font-weight: bold } /* Keyword */
+.highlight .o { color: #666666 } /* Operator */
+.highlight .ch { color: #3D7B7B; font-style: italic } /* Comment.Hashbang */
+.highlight .cm { color: #3D7B7B; font-style: italic } /* Comment.Multiline */
+.highlight .cp { color: #9C6500 } /* Comment.Preproc */
+.highlight .cpf { color: #3D7B7B; font-style: italic } /* Comment.PreprocFile */
+.highlight .c1 { color: #3D7B7B; font-style: italic } /* Comment.Single */
+.highlight .cs { color: #3D7B7B; font-style: italic } /* Comment.Special */
+.highlight .gd { color: #A00000 } /* Generic.Deleted */
+.highlight .ge { font-style: italic } /* Generic.Emph */
+.highlight .ges { font-weight: bold; font-style: italic } /* Generic.EmphStrong */
+.highlight .gr { color: #E40000 } /* Generic.Error */
+.highlight .gh { color: #000080; font-weight: bold } /* Generic.Heading */
+.highlight .gi { color: #008400 } /* Generic.Inserted */
+.highlight .go { color: #717171 } /* Generic.Output */
+.highlight .gp { color: #000080; font-weight: bold } /* Generic.Prompt */
+.highlight .gs { font-weight: bold } /* Generic.Strong */
+.highlight .gu { color: #800080; font-weight: bold } /* Generic.Subheading */
+.highlight .gt { color: #0044DD } /* Generic.Traceback */
+.highlight .kc { color: #008000; font-weight: bold } /* Keyword.Constant */
+.highlight .kd { color: #008000; font-weight: bold } /* Keyword.Declaration */
+.highlight .kn { color: #008000; font-weight: bold } /* Keyword.Namespace */
+.highlight .kp { color: #008000 } /* Keyword.Pseudo */
+.highlight .kr { color: #008000; font-weight: bold } /* Keyword.Reserved */
+.highlight .kt { color: #B00040 } /* Keyword.Type */
+.highlight .m { color: #666666 } /* Literal.Number */
+.highlight .s { color: #BA2121 } /* Literal.String */
+.highlight .na { color: #687822 } /* Name.Attribute */
+.highlight .nb { color: #008000 } /* Name.Builtin */
+.highlight .nc { color: #0000FF; font-weight: bold } /* Name.Class */
+.highlight .no { color: #880000 } /* Name.Constant */
+.highlight .nd { color: #AA22FF } /* Name.Decorator */
+.highlight .ni { color: #717171; font-weight: bold } /* Name.Entity */
+.highlight .ne { color: #CB3F38; font-weight: bold } /* Name.Exception */
+.highlight .nf { color: #0000FF } /* Name.Function */
+.highlight .nl { color: #767600 } /* Name.Label */
+.highlight .nn { color: #0000FF; font-weight: bold } /* Name.Namespace */
+.highlight .nt { color: #008000; font-weight: bold } /* Name.Tag */
+.highlight .nv { color: #19177C } /* Name.Variable */
+.highlight .ow { color: #AA22FF; font-weight: bold } /* Operator.Word */
+.highlight .w { color: #bbbbbb } /* Text.Whitespace */
+.highlight .mb { color: #666666 } /* Literal.Number.Bin */
+.highlight .mf { color: #666666 } /* Literal.Number.Float */
+.highlight .mh { color: #666666 } /* Literal.Number.Hex */
+.highlight .mi { color: #666666 } /* Literal.Number.Integer */
+.highlight .mo { color: #666666 } /* Literal.Number.Oct */
+.highlight .sa { color: #BA2121 } /* Literal.String.Affix */
+.highlight .sb { color: #BA2121 } /* Literal.String.Backtick */
+.highlight .sc { color: #BA2121 } /* Literal.String.Char */
+.highlight .dl { color: #BA2121 } /* Literal.String.Delimiter */
+.highlight .sd { color: #BA2121; font-style: italic } /* Literal.String.Doc */
+.highlight .s2 { color: #BA2121 } /* Literal.String.Double */
+.highlight .se { color: #AA5D1F; font-weight: bold } /* Literal.String.Escape */
+.highlight .sh { color: #BA2121 } /* Literal.String.Heredoc */
+.highlight .si { color: #A45A77; font-weight: bold } /* Literal.String.Interpol */
+.highlight .sx { color: #008000 } /* Literal.String.Other */
+.highlight .sr { color: #A45A77 } /* Literal.String.Regex */
+.highlight .s1 { color: #BA2121 } /* Literal.String.Single */
+.highlight .ss { color: #19177C } /* Literal.String.Symbol */
+.highlight .bp { color: #008000 } /* Name.Builtin.Pseudo */
+.highlight .fm { color: #0000FF } /* Name.Function.Magic */
+.highlight .vc { color: #19177C } /* Name.Variable.Class */
+.highlight .vg { color: #19177C } /* Name.Variable.Global */
+.highlight .vi { color: #19177C } /* Name.Variable.Instance */
+.highlight .vm { color: #19177C } /* Name.Variable.Magic */
+.highlight .il { color: #666666 } /* Literal.Number.Integer.Long */</style><nav><div class="logo-head"><img src="https://jamesg.blog/assets/mascot.svg" style="height: 2.5em;/*! margin-top: 1em; */margin-right: 1em;/*! float: right; */"/><div style="/*! display: flex; *//*! padding-top: 1em; */padding-bottom: 0;/*! border-bottom: 1px solid black; */"><h1 style="/*! display: inline-block; */font-size: 1em;margin: 0;">JameSQL</h1>
+<p class="manual">User Manual</p></div></div><a href="#"><div class="nav-title"><h1 id="title">Delete a Document</h1> <svg viewbox="0 0 256 256" xmlns="http://www.w3.org/2000/svg"><rect fill="none" height="256" width="256"></rect><circle cx="128" cy="128" fill="none" r="96" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"></circle><line fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16" x1="88" x2="168" y1="128" y2="128"></line><polyline fill="none" points="136 96 168 128 136 160" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"></polyline></svg></div></a><span></span></nav>
+<div id="main">
+<aside class="pages">
+<ul>
+<search>
+<input placeholder="Search" type="text"/>
+</search>
+<h3>Get Started</h3>
+<li><a href="/">Home</a></li>
+<li><a href="/quickstart/">Quickstart</a></li>
+<li><a href="/create/">Create an Index</a></li>
+<li><a href="/add/">Add Documents</a></li>
+<li><a href="/update/">Update Documents</a></li>
+<li><a class="focused" href="/delete/">Delete Documents</a></li>
+<h3>Querying</h3>
+<li><a href="/search/">Query Structure</a></li>
+<li><a href="/string-query/">String Queries</a></li>
+<li><a href="/ranking/">Document Ranking</a></li>
+<li><a href="/script-scores/">Script Scores</a></li>
+<li><a href="/matching/">Matching</a></li>
+<li><a href="/range/">Range Queries</a></li>
+<li><a href="/highlight/">Highlight Matches</a></li>
+<li><a href="/group-by/">Group Matches</a></li>
+<h3>Search UX</h3>
+<li><a href="/autosuggest/">Autosuggest</a></li>
+<li><a href="/spelling-correction/">Spelling Correction</a></li>
+<h3>Advanced</h3>
+<li><a href="/code-search/">Code Search</a></li>
+<li><a href="/storage-and-consistency/">Storage and Consistency</a></li>
+</ul>
+</aside>
+<main>
+<article>
+<p>You need a document UUID to delete a document. You can retrieve a UUID by searching for a document.</p>
+<p>Here is an example showing how to delete a document:</p>
+<div class="highlight"><pre><span></span><span class="n">response</span> <span class="o">=</span> <span class="n">index</span><span class="o">.</span><span class="n">search</span><span class="p">(</span>
+    <span class="p">{</span>
+        <span class="s2">"query"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"title"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"equals"</span><span class="p">:</span> <span class="s2">"tolerate it"</span><span class="p">}},</span>
+        <span class="s2">"limit"</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="s2">"sort_by"</span><span class="p">:</span> <span class="s2">"title"</span><span class="p">,</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+
+<span class="n">uuid</span> <span class="o">=</span> <span class="n">response</span><span class="p">[</span><span class="s2">"documents"</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">"uuid"</span><span class="p">]</span>
+
+<span class="n">index</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">uuid</span><span class="p">)</span>
+</pre></div>
+
+<p>You can validate the document has been deleted using this code:</p>
+<div class="highlight"><pre><span></span><span class="n">response</span> <span class="o">=</span> <span class="n">index</span><span class="o">.</span><span class="n">search</span><span class="p">(</span>
+    <span class="p">{</span>
+        <span class="s2">"query"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"title"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"equals"</span><span class="p">:</span> <span class="s2">"tolerate it"</span><span class="p">}},</span>
+        <span class="s2">"limit"</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="s2">"sort_by"</span><span class="p">:</span> <span class="s2">"title"</span><span class="p">,</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">response</span><span class="p">[</span><span class="s2">"documents"</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span>
+</pre></div>
+
+</article>
+<aside>
+<div class="toc">
+<h2>Contents</h2>
+<h3>Indexing Strategies</h3>
+</div>
+</aside>
+</main>
+</div>
+</body>
+</html>
