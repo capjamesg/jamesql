@@ -25,7 +25,6 @@ jobs:
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip aurora-ssg
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           python3 -m pip install --upgrade pip pygments bs4 lxml
           pip3 install -e .
           cd docs
