@@ -8,7 +8,7 @@ You need a document UUID to delete a document. You can retrieve a UUID by search
 
 Here is an example showing how to delete a document:
 
-```python
+<pre><code class="language-python">
 response = index.search(
     {
         "query": {"title": {"equals": "tolerate it"}},
@@ -20,7 +20,7 @@ response = index.search(
 uuid = response["documents"][0]["uuid"]
 
 index.remove(uuid)
-```
+</code></pre>
 
 You can validate the document has been deleted using this code:
 

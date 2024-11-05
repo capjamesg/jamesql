@@ -6,10 +6,10 @@ permalink: /add/
 
 To add documents to a database, use the following code:
 
-```python
+<pre><code class="language-python">
 index.add({"title": "tolerate it", "artist": "Taylor Swift"})
-index.insert({"title": "betty", "artist": "Taylor Swift"})
-```
+index.add({"title": "betty", "artist": "Taylor Swift"})
+</code></pre>
 
 Values within documents can have the following data types:
 
@@ -17,7 +17,10 @@ Values within documents can have the following data types:
 - Integer
 - Float
 - List
-
-You cannot currently index a document whose value is a dictionary.
+- Dictionary
 
 When documents are added, a `uuid` key is added for use in uniquely identifying the document.
+
+<div class="warning">
+    Dictionaries are not indexable. You can store dictionaries and they will be returned in payloads, but you cannot run search operations on them.
+</div>

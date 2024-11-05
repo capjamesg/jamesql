@@ -1,6 +1,6 @@
 You can find documents where a field is less than, greater than, less than or equal to, or greater than or equal to a value with a range query. Here is an example of a query that looks for documents where the `year` field is greater than `2010`:
 
-```python
+<pre><code class="language-python">
 query = {
     "query": {
         "year": {
@@ -8,7 +8,7 @@ query = {
         }
     }
 }
-```
+</code></pre>
 
 The following operators are supported:
 

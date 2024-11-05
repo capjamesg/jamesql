@@ -15,11 +15,11 @@ When you add documents, include at least the following two fields:
 
 When you search for code, all matching documents will have a `_context` key with the following structure:
 
-```python
+<pre><code class="language-python">
 {
     "line": "1",
     "code": "..."
 }
-```
+</code></pre>
 
 This tells you on what line your search matched, and the code that matched. This information is ideal to highlight specific lines relevant to your query.

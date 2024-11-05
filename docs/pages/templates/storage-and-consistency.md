@@ -26,7 +26,7 @@ If you were in the middle of ingesting data, this could be used to resume the in
 
 By default, JameSQL assigns scores to the top 1,000 documents in each clause in a query. Consider the following query;
 
-```
+<pre><code class="language-python">
 query = {
     "query": {
         "and": [
@@ -44,7 +44,7 @@ query = {
     },
     "limit": 10
 }
-```
+</code></pre>
 
 The `{ "artist": { "equals": "Taylor Swift" } }` clause will return the top 1,000 documents that match the query. The `{ "title": { "equals": "tolerate it" } }` clause will return the top 1,000 documents that match the query.
 
@@ -54,8 +54,8 @@ This means that if you have a large number of documents that match a query, you 
 
 You can override the number of documents to consider with:
 
-```
+<pre><code class="language-python">
 index.match_limit_for_large_result_pages = 10_000
-```
+</code></pre>
 
 The higher this number, the longer it will take to process results with a large number of matching documents.

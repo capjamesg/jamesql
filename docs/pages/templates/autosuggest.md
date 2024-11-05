@@ -8,30 +8,28 @@ You can enable autosuggest using one or more fields in an index. This can be use
 
 To enable autosuggest on an index, run:
 
-```python
+<pre><code class="language-python">
 index = JameSQL()
 
-...
-
 index.enable_autosuggest("field")
-```
+</code></pre>
 
 Where `field` is the name of the field on which you want to enable autosuggest.
 
 You can enable autosuggest on multiple fields:
 
-```python
+<pre><code class="language-python">
 index.enable_autosuggest("field1")
 index.enable_autosuggest("field2")
-```
+</code></pre>
 
 When you enable autosuggest on a field, JameSQL will create a trie index for that field. This index is used to efficiently find records that start with a given prefix.
 
 To run an autosuggest query, use the following code:
 
-```python
+<pre><code class="language-python">
 suggestions = index.autosuggest("started", match_full_record=True, limit = 1)
-```
+</code></pre>
 
 This will automatically return records that start with the prefix `started`.
 

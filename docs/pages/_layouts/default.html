@@ -3,15 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JameSQL</title>
+    <title>JameSQL User Manual</title>
+
+    <meta name="description" content="Use JameSQL to build a search index in Python." />
+
+    <link href="https://jamesg.blog/assets/mascot.svg" rel="icon">
+
     <style>
-
-@font-face {
-  font-family: "Standard";
-  src: url("standard-book-webfont.woff2");
-  font-display: swap;
-
-}
+        .callout {
+            background-color: rgba(65, 105, 225, 0.198);
+            border-left: 3px solid royalblue;
+            padding: 1em;
+        }
+        .warning {
+            background-color: rgba(255, 165, 0, 0.198);
+            border-left: 3px solid orange;
+            padding: 1em;
+        }
+        @font-face {
+            font-family: "Standard";
+            src: url("standard-book-webfont.woff2");
+            font-display: swap;
+        }
         html {
             background-color: #f9f9f9;
             font-family: "Standard", sans-serif;
@@ -19,6 +32,8 @@
             margin: 0;
             box-sizing: border-box;
             border-top: 5px solid royalblue;
+            position: fixed;
+            width: 100%;
         }
         h1, h2 {
             margin-bottom: 0.25em;
@@ -78,16 +93,8 @@
             padding: 1em;
             text-wrap: stable;
         }
-        aside li svg {
-            display: inline-block;
-            width: 1em;
-            height: 1em;
-            margin-right: 0.5em;
-            align-self: center;
-        }
         nav {
-            /*! background-color: #8da9ff1c; */
-            color: white;
+            background-color: white;
             padding: 0.5em;
             /*! padding-left: 2.5em; */
             border-bottom: 0.5px solid rgb(57, 57, 57);
@@ -242,19 +249,35 @@
         .manual {
             display: block;margin: 0;padding: 0;
         }
-        svg {
-            display: block;
-            margin-left: auto;
-            margin-right: 1em;
-            max-height: 1.5em;
-        }
         .nav-title svg {
             display: none;
         }
         nav a {
             text-decoration: none;
         }
+        .right-sidebar a {
+            text-decoration: none;
+            color: royalblue;
+        }
+        .right-sidebar svg {
+            display: inline;
+            height: 1em;
+            color: royalblue;
+        }
         @media (max-width: 800px) {
+            svg {
+                display: block;
+                margin-left: auto;
+                margin-right: 1em;
+                max-height: 1.5em;
+            }
+            aside li svg {
+                display: inline-block;
+                width: 1em;
+                height: 1em;
+                margin-right: 0.5em;
+                align-self: center;
+            }
             nav {
                 flex-direction: column;
                 align-items: center;
@@ -282,6 +305,7 @@
             nav {
                 display: block;
                 padding: 0;
+                background-color: white;
             }
             #title {
                 font-size: 1em;
@@ -370,11 +394,12 @@
             <article>
                 {{ content }}
             </article>
-            <aside>
+            <aside class="right-sidebar">
                 <div class="toc">
                     <h2>Contents</h2>
                     <h3>Indexing Strategies</h3>
                 </div>
+                <p><a href="{{ page.template }}"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><rect width="256" height="256" fill="none"/><path d="M92.69,216H48a8,8,0,0,1-8-8V163.31a8,8,0,0,1,2.34-5.65L165.66,34.34a8,8,0,0,1,11.31,0L221.66,79a8,8,0,0,1,0,11.31L98.34,213.66A8,8,0,0,1,92.69,216Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><line x1="136" y1="64" x2="192" y2="120" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><line x1="164" y1="92" x2="68" y2="188" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><line x1="95.49" y1="215.49" x2="40.51" y2="160.51" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/></svg>Edit this Page</a></p>
             </aside>
         </main>
     </div>
