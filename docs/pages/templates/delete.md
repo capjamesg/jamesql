@@ -24,7 +24,7 @@ index.remove(uuid)
 
 You can validate the document has been deleted using this code:
 
-```python
+<pre><code class="language-python">
 response = index.search(
     {
         "query": {"title": {"equals": "tolerate it"}},
@@ -34,4 +34,4 @@ response = index.search(
 )
 
 assert len(response["documents"]) == 0
-```
+</code></pre>

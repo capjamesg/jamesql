@@ -1,0 +1,43 @@
+---
+layout: default
+permalink: /search-pages/
+title: Search
+notoc: true
+---
+
+<p><span id="results-count"></span> search results for "<span id="query"></span>"</p>
+
+<ul class="search">
+</ul>
+
+<script>
+    // get ?query= arg and make search
+    if (window.location.search.includes("?q=")) {
+        var query = window.location.search.split("?q=")[1];
+        var queryElement = document.getElementById("query");
+        var searchElement = document.getElementById("search-input");
+        searchElement.value = query;
+        queryElement.innerText = query;
+        var search = document.getElementsByClassName("search")[0];
+        // make request to localhost:5000/search?q=query
+        fetch("/search?q=" + query)
+            .then(response => response.json())
+            .then(data => {
+                var resultsCount = document.getElementById("results-count");
+                resultsCount.innerText = data.documents.length;
+                data.documents.forEach(result => {
+                    var li = document.createElement("li");
+                    var a = document.createElement("a");
+                    var h3 = document.createElement("h2");
+                    var p = document.createElement("p");
+                    a.href = result.url;
+                    h3.innerText = result.title;
+                    p.innerHTML = result.raw_content;
+                    a.appendChild(h3);
+                    a.appendChild(p);
+                    li.appendChild(a);
+                    search.appendChild(li);
+                });
+            });
+    }
+</script>

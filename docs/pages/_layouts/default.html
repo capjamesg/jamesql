@@ -10,6 +10,21 @@
     <link href="https://jamesg.blog/assets/mascot.svg" rel="icon">
 
     <style>
+        .search {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .search li {
+            padding-left: 1em;
+            padding-right: 1em;
+            padding-top: 0.5em;
+            padding-bottom: 0.5em;
+            background-color: white;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .search li:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
         .callout {
             background-color: rgba(65, 105, 225, 0.198);
             border-left: 3px solid royalblue;
@@ -58,6 +73,9 @@
             display: grid;
             grid-template-columns: 1fr 4fr;
         }
+        article {
+            padding-bottom: 3em;
+        }
         h3 {
             text-transform: uppercase;
             font-size: 0.9em;
@@ -68,21 +86,35 @@
             border-right: 0.5px solid rgb(57, 57, 57);
             padding-right: 1.5em;
         }
+        .right-sidebar {
+            position: sticky;
+            top: 1em;
+            padding-top: 1em;
+        }
         .toc h3 {
             margin: 0;
         }
-        aside ul {
+        .pages ul {
             list-style-type: none;
             box-sizing: border-box;
             max-width: 100%;
             padding-left: 1em;
         }
-        aside li {
+        .pages li {
             list-style-type: none;
             padding: 0.5em 0;
             /*! border-radius: 0.5em; */
         }
-        aside li, pre {
+        .toc ul {
+            list-style-type: none;
+            padding-left: 1em;
+            margin-top: 0;
+        }
+        .toc a:hover {
+            color: rgb(26, 46, 109);
+        }
+        .pages a, pre {
+            display: block;
             background-color: white;
             box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.1);
 
@@ -115,8 +147,8 @@
             color: royalblue;
             text-decoration: none;
         }
-        a:hover {
-            text-decoration: underline;
+        ul a:hover {
+            background-color: rgba(0, 0, 0, 0.05);
         }
         .focused {
             border-left: 3px solid royalblue;
@@ -183,21 +215,6 @@
             border-left: 0.5px solid rgb(57, 57, 57);
             padding-left: 1em;
         }
-        @media (max-width: 800px) {
-            #main {
-                grid-template-columns: 1fr;
-            }
-            aside {
-                display: none;
-            }
-            main {
-                grid-template-columns: 1fr;
-            }
-            article {
-                max-width: 100%;
-                padding: 1em;
-            }
-        }
         h1 {
             font-size: 1.5em;
         }
@@ -237,20 +254,18 @@
             border: 0.5px solid rgb(57, 57, 57);
             width: 100%;
             box-sizing: border-box;
-            background-color: rgb(215, 236, 252);
+            background-color: rgba(0, 0, 0, 0.05);
         }
 
         .nav-title {
-            padding-left: 2em;
+            padding-left: 1.5em;
         }
         article {
             padding-left: 2em;
+            padding-right: 2em;
         }
         .manual {
             display: block;margin: 0;padding: 0;
-        }
-        .nav-title svg {
-            display: none;
         }
         nav a {
             text-decoration: none;
@@ -264,11 +279,69 @@
             height: 1em;
             color: royalblue;
         }
+        .menu {
+            background-color: white;
+            border-bottom: 0.5px solid rgb(57, 57, 57);
+        }
+        .menu {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+        .jcb:hover {
+            background-color: royalblue;
+            a {
+                color: white;
+            }
+        }
+        .aurora:hover {
+            background-color: #aaaaff;
+        }
+        .menu ul {
+            display: flex;
+            justify-content: flex-end;
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        .menu li {
+            padding-top: 0.25em;
+        }
+        .menu ul li {
+            padding-left: 1em;
+            padding-right: 1em;
+        }
+        .link-with-logo {
+            display: flex;
+            align-items: center;
+            margin-left: 1em;
+        }
+        .link-with-logo svg {
+            margin-right: 0.25em;
+        }
+        .nav-title svg {
+            display: none;
+        }
+        .toc a {
+            color: rgb(81, 81, 81);
+        }
         @media (max-width: 800px) {
-            svg {
+            #main {
+                grid-template-columns: 1fr;
+            }
+            aside {
+                display: none;
+            }
+            main {
+                grid-template-columns: 1fr;
+            }
+            article {
+                max-width: 100%;
+                padding: 1em;
+            }
+            .nav-title svg {
                 display: block;
                 margin-left: auto;
-                margin-right: 1em;
+                padding-right: 0.5em;
                 max-height: 1.5em;
             }
             aside li svg {
@@ -320,6 +393,7 @@
                 background-color: white;
                 box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.1);
                 padding: 0.5em;
+                padding-left: 1em;
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
@@ -332,13 +406,13 @@
                 border-top-width: 5px;
             }
             .logo-head {
-                background-color: rgba(65, 105, 225, 0.198);
+                background-color: rgb(238, 237, 237);
                 color: white;
                 display: flex;
                 align-items: center;
                 padding: 0.5em;
+                padding-left: 1em;
                 margin: 0;
-                padding-left: 0.5em;
             }
             .logo-head div {
                 display: flex;
@@ -348,59 +422,151 @@
                 overflow-x: auto;
                 overflow-y: scroll;
             }
+            .menu {
+                display: none;
+            }
+        }
+        .toc h3 {
+            margin-bottom: 0.25em;
+        }
+        footer {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            margin-top: 2em;
+            background-color: white;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding-left: 1em;
+            padding-right: 1em;
+            gap: 1em;
+        }
+        footer div:first-child {
+            border-right: 0.5px solid rgb(57, 57, 57);
+        }
+        footer div:last-child {
+            display: flex;
+            justify-content: flex-end;
+        }
+        video {
+            max-width: 35em;
+        }
+        .pages ul {
+            padding-bottom: 3em;
+        }
+        .links {
+            margin-top: 3em;
+            border-left: 0.5px solid rgb(57, 57, 57);
+        }
+        .links a {
+            color: rgb(81, 81, 81);
+        }
+        form {
+            display: flex;
+            align-items: center;
+            padding-left: 0;
+            padding-right: 0;
+        }
+        form svg {
+            margin-left: 0.5em;
+            height: 1.5em;
+        }
+        form button {
+            display: flex;
+            align-items: center;
+            background-color: inherit;
+            border: none;
+            outline: none;
+            cursor: pointer;
+        }
+        .search h2 {
+            margin-top: 0.5em;
         }
     </style>
 </head>
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         document.querySelector(".nav-title").addEventListener("click", function() {
-            document.querySelector(".pages").style.display = "block";
+            if (!document.querySelector(".pages").style.display || document.querySelector(".pages").style.display === "none") {
+                document.querySelector(".pages").style.display = "block";
+            } else {
+                document.querySelector(".pages").style.display = "none";
+            }
         });
+        // scroll sidebar to focused link, with 1em padding
+        var focused = document.querySelector(".focused");
+        if (focused) {
+            focused.scrollIntoView({block: "center", inline: "nearest"});
+        }
     });
 </script>
-<body><nav><div class="logo-head"><img src="https://jamesg.blog/assets/mascot.svg" style="height: 2.5em;/*! margin-top: 1em; */margin-right: 1em;/*! float: right; */"><div style="/*! display: flex; *//*! padding-top: 1em; */padding-bottom: 0;/*! border-bottom: 1px solid black; */"><h1 style="/*! display: inline-block; */font-size: 1em;margin: 0;">JameSQL</h1>
+<body>
+    <div class="menu"><div></div><ul><a href="https://jamesg.blog/" class="jcb"><li>James' Coffee Blog</li></a><a href="https://aurora.jamesg.blog/" class="aurora"><li>Aurora</li></a><a href="https://jamesg.blog/jamesql/"><li style="background-color: royalblue; color: white;">JameSQL</li></a></ul></div>
+    <nav><div class="logo-head"><img src="https://jamesg.blog/assets/mascot.svg" style="height: 2.5em;/*! margin-top: 1em; */margin-right: 1em;/*! float: right; */"><div style="/*! display: flex; *//*! padding-top: 1em; */padding-bottom: 0;/*! border-bottom: 1px solid black; */"><h1 style="/*! display: inline-block; */font-size: 1em;margin: 0;">JameSQL</h1>
     <p class="manual">User Manual</p></div></div><a href="#"><div class="nav-title"><h1 id="title">{{ page.title }}</h1> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><rect width="256" height="256" fill="none"/><circle cx="128" cy="128" r="96" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><line x1="88" y1="128" x2="168" y2="128" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><polyline points="136 96 168 128 136 160" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/></svg></div></a><span></span></nav>
     <div id="main">
         <aside class="pages">
             <ul>
                 <search>
-                    <input type="text" placeholder="Search">
+                    <form action="/search-pages/" method="get">
+                        <input type="text" id="search-input" name="q" placeholder="Search">
+                        <button type="submit"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><rect width="256" height="256" fill="none"/><circle cx="112" cy="112" r="80" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><line x1="168.57" y1="168.57" x2="224" y2="224" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/></svg></button>
+                    </form>
                 </search>
                 <h3>Get Started</h3>
-                <li><a href="/" {% if page.url == "/" %}class="focused"{% endif %}>Home</a></li>
-                <li><a href="/quickstart/" {% if page.permalink == "/quickstart/" %}class="focused"{% endif %}>Quickstart</a></li>
-                <li><a href="/create/" {% if page.permalink == "/create/" %}class="focused"{% endif %}>Create an Index</a></li>
-                <li><a href="/add/" {% if page.permalink == "/add/" %}class="focused"{% endif %}>Add Documents</a></li>
-                <li><a href="/update/" {% if page.permalink == "/update/" %}class="focused"{% endif %}>Update Documents</a></li>
-                <li><a href="/delete/" {% if page.permalink == "/delete/" %}class="focused"{% endif %}>Delete Documents</a></li>
+                <a href="/" {% if page.permalink == "//" %}class="focused"{% endif %}><li>Home</li></a>
+                <a href="/quickstart/" {% if page.permalink == "/quickstart/" %}class="focused"{% endif %}><li>Quickstart</li></a>
+                <a href="/create/" {% if page.permalink == "/create/" %}class="focused"{% endif %}><li>Create an Index</li></a>
+                <a href="/add/" {% if page.permalink == "/add/" %}class="focused"{% endif %}><li>Add Documents</li></a>
+                <a href="/update/" {% if page.permalink == "/update/" %}class="focused"{% endif %}><li>Update Documents</li></a>
+                <a href="/delete/" {% if page.permalink == "/delete/" %}class="focused"{% endif %}><li>Delete Documents</li></a>
                 <h3>Querying</h3>
-                <li><a href="/search/" {% if page.permalink == "/search/" %}class="focused"{% endif %}>Query Structure</a></li>
-                <li><a href="/string-query/" {% if page.permalink == "/string-query/" %}class="focused"{% endif %}>String Queries</a></li>
-                <li><a href="/ranking/" {% if page.permalink == "/ranking/" %}class="focused"{% endif %}>Document Ranking</a></li>
-                <li><a href="/script-scores/" {% if page.permalink == "/script-scores/" %}class="focused"{% endif %}>Script Scores</a></li>
-                <li><a href="/matching/" {% if page.permalink == "/matching/" %}class="focused"{% endif %}>Matching</a></li>
-                <li><a href="/range/" {% if page.permalink == "/range/" %}class="focused"{% endif %}>Range Queries</a></li>
-                <li><a href="/highlight/" {% if page.permalink == "/highlight/" %}class="focused"{% endif %}>Highlight Matches</a></li>
-                <li><a href="/group-by/" {% if page.permalink == "/group-by/" %}class="focused"{% endif %}>Group Matches</a></li>
+                <a href="/search/" {% if page.permalink == "/search/" %}class="focused"{% endif %}><li>Query Structure</li></a>
+                <a href="/string-query/" {% if page.permalink == "/string-query/" %}class="focused"{% endif %}><li>String Queries</li></a>
+                <a href="/ranking/" {% if page.permalink == "/ranking/" %}class="focused"{% endif %}><li>Document Ranking</li></a>
+                <a href="/script-scores/" {% if page.permalink == "/script-scores/" %}class="focused"{% endif %}><li>Script Scores</li></a>
+                <a href="/matching/" {% if page.permalink == "/matching/" %}class="focused"{% endif %}><li>Matching</li></a>
+                <a href="/range/" {% if page.permalink == "/range/" %}class="focused"{% endif %}><li>Range Queries</li></a>
+                <a href="/highlight/" {% if page.permalink == "/highlight/" %}class="focused"{% endif %}><li>Highlight Matches</li></a>
+                <a href="/group-by/" {% if page.permalink == "/group-by/" %}class="focused"{% endif %}><li>Group Matches</li></a>
                 <h3>Search UX</h3>
-                <li><a href="/autosuggest/" {% if page.permalink == "/autosuggest/" %}class="focused"{% endif %}>Autosuggest</a></li>
-                <li><a href="/spelling-correction/" {% if page.permalink == "/spelling-correction/" %}class="focused"{% endif %}>Spelling Correction</a></li>
+                <a href="/autosuggest/" {% if page.permalink == "/autosuggest/" %}class="focused"{% endif %}><li>Autosuggest</li></a>
+                <a href="/spelling-correction/" {% if page.permalink == "/spelling-correction/" %}class="focused"{% endif %}><li>Spelling Correction</li></a>
                 <h3>Advanced</h3>
-                <li><a href="/code-search/" {% if page.permalink == "/code-search/" %}class="focused"{% endif %}>Code Search</a></li>
-                <li><a href="/storage-and-consistency/" {% if page.permalink == "/storage-and-constituency/" %}class="focused"{% endif %}>Storage and Consistency</a></li>
+                <a href="/code-search/" {% if page.permalink == "/code-search/" %}class="focused"{% endif %}><li>Code Search</li></a>
+                <a href="/storage-and-consistency/" {% if page.permalink == "/storage-and-consistency/" %}class="focused"{% endif %}><li>Storage and Consistency</li></a>
             </ul>
         </aside>
         <main>
             <article>
                 {{ content }}
+                <!-- <footer>
+                    <div class="prev">
+                        <p>← Add Documents</p>
+                    </div>
+                    <div class="next">
+                        <p>Delete Documents →</p>
+                    </div>
+                </footer> -->
             </article>
-            <aside class="right-sidebar">
-                <div class="toc">
-                    <h2>Contents</h2>
-                    <h3>Indexing Strategies</h3>
-                </div>
-                <p><a href="{{ page.template }}"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><rect width="256" height="256" fill="none"/><path d="M92.69,216H48a8,8,0,0,1-8-8V163.31a8,8,0,0,1,2.34-5.65L165.66,34.34a8,8,0,0,1,11.31,0L221.66,79a8,8,0,0,1,0,11.31L98.34,213.66A8,8,0,0,1,92.69,216Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><line x1="136" y1="64" x2="192" y2="120" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><line x1="164" y1="92" x2="68" y2="188" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><line x1="95.49" y1="215.49" x2="40.51" y2="160.51" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/></svg>Edit this Page</a></p>
-            </aside>
+            {% if not site.page.notoc %}
+                <aside class="right-sidebar">
+                    {% if site.page.toc %}
+                    <div class="toc">
+                        <h2>Contents</h2>
+                        {% for item in site.page.toc %}
+                            <h3><a href="#{{ item.id }}">{{ item.text }}</a></h3>
+                            {% if item.children %}
+                                <ul>
+                                    {% for child in item.children %}
+                                        <li><a href="#{{ child.id }}">{{ child.text }}</a></li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    <p class="links"><a href="https://github.com/capjamesg/jamesql/tree/main/docs/{{ page.generated_from }}" class="link-with-logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><rect width="256" height="256" fill="none"/><path d="M92.69,216H48a8,8,0,0,1-8-8V163.31a8,8,0,0,1,2.34-5.65L165.66,34.34a8,8,0,0,1,11.31,0L221.66,79a8,8,0,0,1,0,11.31L98.34,213.66A8,8,0,0,1,92.69,216Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><line x1="136" y1="64" x2="192" y2="120" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><line x1="164" y1="92" x2="68" y2="188" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><line x1="95.49" y1="215.49" x2="40.51" y2="160.51" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/></svg>Edit this Page</a></p>
+                </aside>
+            {% endif %}
         </main>
     </div>
 </body>
