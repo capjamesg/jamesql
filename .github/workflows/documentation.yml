@@ -22,8 +22,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pygments bs4 lxml
-          pip install git+https://github.com/capjamesg/aurora
+          python -m pip install pygments bs4 lxml
+          python -m pip install git+https://github.com/capjamesg/aurora
           cd docs
       - name: Build main site
         env:  
