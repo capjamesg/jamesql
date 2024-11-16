@@ -1064,7 +1064,7 @@ class JameSQL:
             ]
         )[0]
 
-        query_term = query["query"][query_field][query_type]
+        query_term = str(query["query"][query_field][query_type])
 
         enforce_strict = query["query"][query_field].get("strict", False)
         highlight_terms = query["query"][query_field].get("highlight", False)
