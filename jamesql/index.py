@@ -875,8 +875,8 @@ class JameSQL:
                 if query["query"].get("or"):
                     term_queries = [term.get("or")[0][list(term.get("or")[0].keys())[0]]["contains"] for term in query["query"]["or"]]
                 else:
-                    term_queries = [term.get("and")[0][list(term.get("and")[0].keys())[0]]["contains"] for term in query["query"]["and"]]
-                    
+                    term_queries = [term.get("or")[0][list(term.get("or")[0].keys())[0]]["contains"] for term in query["query"]["and"]]
+
                 fields = [list(term.get("or")[0].keys()) for term in query["query"]["or"]]
                 fields = [field for sublist in fields for field in sublist]
 
