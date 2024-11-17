@@ -907,7 +907,7 @@ class JameSQL:
                         # give a boost if all terms are within 1 word of each other
                         # so a doc with "all too well" would do btter than "all well too"
                         if all([word_pos.get(w) for w in term_queries]):
-                            first_word_pos = set(word_pos[query["query"][operator][0]["or"][0][field]["contains"]])
+                            first_word_pos = set(word_pos[term_queries[0]])
                             total = first_word_pos.copy()
                             for i, term in enumerate(term_queries):
                                 positions = set([x - i for x in word_pos[term]])
@@ -920,7 +920,7 @@ class JameSQL:
                         if field != "title_lower":
                             # TODO: Run only if query len > 1 word
                             if all([word_pos.get(w) for w in term_queries]):
-                                first_word_pos = set(word_pos_title[query["query"][operator][0]["or"][0][field]["contains"]])
+                                first_word_pos = set(word_pos_title[term_queries[0]])
                                 for i, term in enumerate(term_queries):
                                     positions = set([x - i for x in word_pos_title[term]])
                                     first_word_pos = first_word_pos.intersection(positions)
