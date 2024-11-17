@@ -56,7 +56,7 @@ class JameSQLScriptTransformer(Transformer):
         # item is datetime.dateime object
         days_since_post = (datetime.datetime.now() - datetime.datetime.strptime(items[0], "%Y-%m-%dT%H:%M:%S")).days
 
-        return 0.9 ** (days_since_post / 30)
+        return 1.1 ** (days_since_post / 30)
 
     def WORD(self, items):
         if items.value.isdigit():

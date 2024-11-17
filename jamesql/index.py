@@ -102,6 +102,7 @@ class JameSQL:
         self.last_transaction_after_recovery = None
         self.autosuggest_index = {}
         self.doc_lengths = defaultdict(dict)
+        self.document_length_words = defaultdict(int)
         self.autosuggest_on = None
         self.word_counts = defaultdict(int)
         self.string_query_parser = Lark(
@@ -114,8 +115,14 @@ class JameSQL:
         self.tf = defaultdict(dict)
         self.idf = {}
         self.tf_idf = defaultdict(lambda: SortedDict())
+        self.bm25 = defaultdict(lambda: SortedDict())
         self.reverse_tf_idf = defaultdict(lambda: SortedDict())
         self.write_lock = threading.Lock()
+
+        self.k1 = 1.5
+        self.b = 0.75
+
+        self.enable_experimental_bm25_ranker = False
 
     def __len__(self):
         return len(self.global_index)
@@ -223,11 +230,11 @@ class JameSQL:
             # Compute term frequency (TF) for each word in the document
             total_words_in_document = len(words)
             for word, count in word_count.items():
-                self.tf[document["uuid"]][word] = count / total_words_in_document
+                self.tf[document["uuid"]][word] = count # / total_words_in_document
 
         # Compute inverse document frequency (IDF) for each word in the corpus
         for word, doc_count in document_frequencies.items():
-            self.idf[word] = math.log(total_documents / doc_count)
+            self.idf[word] =math.log((total_documents - doc_count + 0.5) / (doc_count + 0.5) + 1)
 
         # Compute TF-IDF for each document
         for document in documents:
@@ -481,6 +488,7 @@ class JameSQL:
             for key, value in document.items():
                 if isinstance(value, str):
                     self.doc_lengths[document["uuid"]][key] = len(value.split(" "))
+                    self.document_length_words[document["uuid"]] += len(value.split(" "))
 
                 if key not in self.gsis:
                     if key == "uuid":
@@ -858,6 +866,68 @@ class JameSQL:
                 results = sorted(
                     results, key=itemgetter(results_sort_by), reverse=True
                 )
+
+            if self.enable_experimental_bm25_ranker:
+                # TODO: Make sure this code can process boosts.
+
+                self.avgdl = sum(self.document_length_words.values()) / len(self.document_length_words)
+
+                term_queries = [term.get("or")[0]["title_lower"]["contains"] for term in query["query"]["or"]]
+
+                fields = [list(term.get("or")[0].keys()) for term in query["query"]["or"]]
+                fields = [field for sublist in fields for field in sublist]
+
+                for doc in results:
+                    word_pos = defaultdict(list)
+                    for i, word in enumerate(doc["post"].lower().split(" ")):
+                        word_pos[word].append(i)
+                    word_pos_title = defaultdict(list)
+                    for i, word in enumerate(doc["title"].lower().split(" ")):
+                        word_pos_title[word].append(i)
+
+                    doc["_score"] = 0
+
+                    for term in [term.get("or")[0]["title_lower"]["contains"] for term in query["query"]["or"]]:
+                        tf = self.tf.get(doc["uuid"], {}).get(term, 0)
+                        idf = self.idf.get(term, 0)
+
+                        # bm25
+                        term_score = (tf * (self.k1 + 1)) / (tf + self.k1 * (1 - self.b + self.b * (self.document_length_words[doc["uuid"]] / self.avgdl)))
+                        term_score *= idf
+
+                        doc["_score"] += term_score
+
+                    for field in fields:
+                        # give a boost if all terms are within 1 word of each other
+                        # so a doc with "all too well" would do btter than "all well too"
+                        if all([word_pos.get(w) for w in term_queries]):
+                            first_word_pos = set(word_pos[query["query"]["or"][0]["or"][0][field]["contains"]])
+                            total = first_word_pos.copy()
+                            for i, term in enumerate(term_queries):
+                                positions = set([x - i for x in word_pos[term]])
+                                first_word_pos = first_word_pos.intersection(positions)
+                                total = total.union(positions)
+
+                            if first_word_pos:
+                                doc["_score"] += (len(first_word_pos) + 1) * len(total)
+
+                        if field != "title_lower":
+                            # TODO: Run only if query len > 1 word
+                            if all([word_pos.get(w) for w in term_queries]):
+                                first_word_pos = set(word_pos_title[query["query"]["or"][0]["or"][0][field]["contains"]])
+                                for i, term in enumerate(term_queries):
+                                    positions = set([x - i for x in word_pos_title[term]])
+                                    first_word_pos = first_word_pos.intersection(positions)
+
+                                if first_word_pos:
+                                    doc["_score"] *= 2 + len(first_word_pos)
+
+                    doc["_score"] *= len([term.get("or")[0]["title_lower"]["contains"] in doc["title"].lower() for term in query["query"]["or"] if str(term.get("or")[0]["title_lower"]["contains"]) in doc["title"].lower()]) + 1
+
+            # sort by doc score
+            results = sorted(
+                results, key=lambda x: x.get("_score", 0), reverse=True
+            )
 
             if query.get("query_score"):
                 tree = parse_script_score(query["query_score"])
