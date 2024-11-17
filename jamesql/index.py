@@ -872,7 +872,7 @@ class JameSQL:
 
                 self.avgdl = sum(self.document_length_words.values()) / len(self.document_length_words)
 
-                term_queries = [term.get("or")[0]["title_lower"]["contains"] for term in query["query"]["or"]]
+                term_queries = [term.get("or")[0][list(term.get("or")[0].keys())[0]]["contains"] for term in query["query"]["or"]]
 
                 fields = [list(term.get("or")[0].keys()) for term in query["query"]["or"]]
                 fields = [field for sublist in fields for field in sublist]
