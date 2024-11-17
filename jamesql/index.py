@@ -872,7 +872,7 @@ class JameSQL:
 
                 self.avgdl = sum(self.document_length_words.values()) / len(self.document_length_words)
 
-                term_queries = [term.get("or")[0][list(term.get("or")[0].keys())[0]]["contains"] for term in query["query"]["or"]]
+                term_queries = [term.get("or")[0][list(term.get("or")[0].keys())[0]]["contains"] for term in query["query"][list(query["query"].keys())[0]]]
 
                 fields = [list(term.get("or")[0].keys()) for term in query["query"]["or"]]
                 fields = [field for sublist in fields for field in sublist]
@@ -923,6 +923,7 @@ class JameSQL:
                                     doc["_score"] *= 2 + len(first_word_pos)
 
                     if "title_lower" in fields:
+                        # TODO: Make this more dynamic
                         doc["_score"] *= len([term.get("or")[0].get("title_lower", {}).get("contains") in doc["title"].lower() for term in query["query"]["or"] if str(term.get("or")[0].get("title_lower", {}).get("contains")).lower() in doc["title"].lower()]) + 1
 
             # sort by doc score
