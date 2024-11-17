@@ -887,7 +887,7 @@ class JameSQL:
 
                     doc["_score"] = 0
 
-                    for term in [term.get("or")[0]["title_lower"]["contains"] for term in query["query"]["or"]]:
+                    for term in term_queries:
                         tf = self.tf.get(doc["uuid"], {}).get(term, 0)
                         idf = self.idf.get(term, 0)
 
