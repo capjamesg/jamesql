@@ -873,9 +873,11 @@ class JameSQL:
                 self.avgdl = sum(self.document_length_words.values()) / len(self.document_length_words)
 
                 if query["query"].get("or"):
+                    operator = "or"
                     term_queries = [term.get("or")[0][list(term.get("or")[0].keys())[0]]["contains"] for term in query["query"]["or"]]
                     fields = [list(term.get("or")[0].keys()) for term in query["query"]["or"]]
                 else:
+                    operator = "and"
                     term_queries = [term[list(term.keys())[0]]["contains"] for term in query["query"]["and"][0]["or"]]
                     fields = [list(term[list(term.keys())[0]].keys()) for term in query["query"]["and"][0]["or"]]
 
@@ -905,7 +907,7 @@ class JameSQL:
                         # give a boost if all terms are within 1 word of each other
                         # so a doc with "all too well" would do btter than "all well too"
                         if all([word_pos.get(w) for w in term_queries]):
-                            first_word_pos = set(word_pos[query["query"]["or"][0]["or"][0][field]["contains"]])
+                            first_word_pos = set(word_pos[query["query"][operator][0]["or"][0][field]["contains"]])
                             total = first_word_pos.copy()
                             for i, term in enumerate(term_queries):
                                 positions = set([x - i for x in word_pos[term]])
@@ -918,7 +920,7 @@ class JameSQL:
                         if field != "title_lower":
                             # TODO: Run only if query len > 1 word
                             if all([word_pos.get(w) for w in term_queries]):
-                                first_word_pos = set(word_pos_title[query["query"]["or"][0]["or"][0][field]["contains"]])
+                                first_word_pos = set(word_pos_title[query["query"][operator][0]["or"][0][field]["contains"]])
                                 for i, term in enumerate(term_queries):
                                     positions = set([x - i for x in word_pos_title[term]])
                                     first_word_pos = first_word_pos.intersection(positions)
@@ -926,9 +928,9 @@ class JameSQL:
                                 if first_word_pos:
                                     doc["_score"] *= 2 + len(first_word_pos)
 
-                    if "title_lower" in fields:
-                        # TODO: Make this more dynamic
-                        doc["_score"] *= len([term.get("or")[0].get("title_lower", {}).get("contains") in doc["title"].lower() for term in query["query"]["or"] if str(term.get("or")[0].get("title_lower", {}).get("contains")).lower() in doc["title"].lower()]) + 1
+                    # if "title_lower" in fields:
+                    #     # TODO: Make this more dynamic
+                    #     doc["_score"] *= len([term.get("or")[0].get("title_lower", {}).get("contains") in doc["title"].lower() for term in query["query"]["or"] if str(term.get("or")[0].get("title_lower", {}).get("contains")).lower() in doc["title"].lower()]) + 1
 
             # sort by doc score
             results = sorted(
