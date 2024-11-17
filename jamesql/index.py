@@ -923,7 +923,7 @@ class JameSQL:
                                     doc["_score"] *= 2 + len(first_word_pos)
 
                     if "title_lower" in fields:
-                        doc["_score"] *= len([term.get("or")[0]["title_lower"]["contains"] in doc["title"].lower() for term in query["query"]["or"] if str(term.get("or")[0]["title_lower"]["contains"]) in doc["title"].lower()]) + 1
+                        doc["_score"] *= len([term.get("or")[0].get("title_lower", {}).get("contains") in doc["title"].lower() for term in query["query"]["or"] if str(term.get("or")[0].get("title_lower", {}).get("contains")).lower() in doc["title"].lower()]) + 1
 
             # sort by doc score
             results = sorted(
