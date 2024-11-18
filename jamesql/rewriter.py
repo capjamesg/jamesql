@@ -243,8 +243,6 @@ class QueryRewriter(Transformer):
                 }
             }
 
-
-
             if self.boosts.get(field):
                 results[field]["boost"] = self.boosts.get(field, boost)
 
