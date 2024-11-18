@@ -927,6 +927,7 @@ class JameSQL:
                                 total = total.union(positions)
 
                             if first_word_pos:
+                                print(doc["title"])
                                 doc["_score"] += (len(first_word_pos) + 1) * len(total)
 
                         if field != "title_lower":
@@ -1256,6 +1257,8 @@ class JameSQL:
                                 .get("uuid", {})
                             )
 
+                        print(all_matches)
+
                         for word_index in range(0, len(words)):
                             current_word = words[word_index]
                             if word_index + 1 == len(words):
@@ -1303,6 +1306,8 @@ class JameSQL:
                                 all_match_positions[
                                     current_word + " " + next_word
                                 ] = match_positions
+
+                        print(all_match_positions)
 
                         if all_matches:
                             matching_documents.extend(
