@@ -177,14 +177,16 @@ class QueryRewriter(Transformer):
 
     def strict_search_query(self, items):
         return {
-            "or": {
-                field: {
-                    self.get_query_strategy(value=items[0]): items[0],
-                    "strict": True,
+            "or": [
+                {
+                    field: {
+                        self.get_query_strategy(value=items[0]): items[0],
+                        "strict": True,
+                    }
+                    for field in self.query_keys
+                    if self.indexing_strategies.get(field) not in {"NUMERIC", "DATE"}
                 }
-                for field in self.query_keys
-                if self.indexing_strategies.get(field) not in {"NUMERIC", "DATE"}
-            }
+            ]
         }
 
     def TERM(self, items):
@@ -227,11 +229,21 @@ class QueryRewriter(Transformer):
             if self.indexing_strategies.get(field) == "NUMERIC":
                 continue
 
+            if self.get_query_strategy(field, value) == "contains":
+                # if value is float, convert to int
+                # this is because text queries can't be floats
+                if isinstance(value, float):
+                    value = int(value)
+
+                value = str(value)
+
             results = {
                 field: {
                     self.get_query_strategy(field, value): value,
                 }
             }
+
+
 
             if self.boosts.get(field):
                 results[field]["boost"] = self.boosts.get(field, boost)
