@@ -911,6 +911,8 @@ class JameSQL:
                     doc["_score"] += term_score
 
                 for field in fields:
+                    if not gsis.get(field):
+                        continue
                     word_pos = gsis[field][term]["documents"]["uuid"][doc["uuid"]]
                     # give a boost if all terms are within 1 word of each other
                     # so a doc with "all too well" would do btter than "all well too"
