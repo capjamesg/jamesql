@@ -896,7 +896,7 @@ class JameSQL:
                 term_queries = list(set(term_queries))
                 fields = [field for sublist in fields for field in sublist]
 
-                gsis = {field: self.gsis[field]["gsi"] for field in fields}
+                gsis = {field: self.gsis[field]["gsi"] for field in fields if self.gsis.get(field)}
 
                 for doc in results:
                     doc["_score"] = 0
