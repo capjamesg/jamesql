@@ -820,174 +820,174 @@ class JameSQL:
         return gsi
 
     def search(self, query: dict) -> List[str]:
-        with self.write_lock:
-            start_time = time.time()
+        # with self.write_lock:
+        start_time = time.time()
 
-            results_limit = query.get("limit", 10)
+        results_limit = query.get("limit", 10)
 
-            metadata = {}
+        metadata = {}
 
-            if not query.get("query"):
+        if not query.get("query"):
+            return {
+                "documents": [],
+                "error": "No query provided",
+                "query_time": str(round(time.time() - start_time, 4)),
+            }
+
+        if query["query"] == {}:  # empty query
+            results = []
+        elif query["query"] == "*":  # all query
+            results = list(self.global_index.values())
+        else:
+            number_of_query_conditions = self._get_query_conditions(query["query"])
+
+            if len(number_of_query_conditions) > MAXIMUM_QUERY_STATEMENTS:
                 return {
                     "documents": [],
-                    "error": "No query provided",
+                    "error": "Too many query conditions. Maximum is "
+                    + str(MAXIMUM_QUERY_STATEMENTS)
+                    + ".",
                     "query_time": str(round(time.time() - start_time, 4)),
                 }
 
-            if query["query"] == {}:  # empty query
-                results = []
-            elif query["query"] == "*":  # all query
-                results = list(self.global_index.values())
+            metadata, result_ids = self._recursively_parse_query(query["query"])
+
+            results = [self.global_index.get(doc_id) for doc_id in result_ids if doc_id in self.global_index]
+
+            results = orjson.loads(orjson.dumps(results))
+
+            for r in results:
+                r["_score"] = 0
+                if r["uuid"] in metadata.get("scores", {}):
+                    r["_score"] = metadata["scores"][r["uuid"]]
+                if r["uuid"] in metadata.get("highlights", {}):
+                    r["_context"] = metadata["highlights"][r["uuid"]]
+
+        end_time = time.time()
+
+        if query.get("sort_by") is None:
+            query["sort_by"] = "_score"
+
+        results_sort_by = query["sort_by"]
+
+        if query.get("sort_order") == "asc":
+            results = sorted(
+                results, key=itemgetter(results_sort_by), reverse=False
+            )
+        else:
+            results = sorted(
+                results, key=itemgetter(results_sort_by), reverse=True
+            )
+
+        if self.enable_experimental_bm25_ranker:
+            # TODO: Make sure this code can process boosts.
+
+            self.avgdl = sum(self.document_length_words.values()) / len(self.document_length_words)
+
+            if query["query"].get("or"):
+                operator = "or"
+                term_queries = [term.get("or")[0][list(term.get("or")[0].keys())[0]]["contains"] for term in query["query"]["or"]]
+                fields = [list(term.get("or")[0].keys()) for term in query["query"]["or"]]
             else:
-                number_of_query_conditions = self._get_query_conditions(query["query"])
+                operator = "and"
+                term_queries = [term[list(term.keys())[0]]["contains"] for term in query["query"]["and"][0]["or"]]
+                fields = [list(term[list(term.keys())[0]].keys()) for term in query["query"]["and"][0]["or"]]
 
-                if len(number_of_query_conditions) > MAXIMUM_QUERY_STATEMENTS:
-                    return {
-                        "documents": [],
-                        "error": "Too many query conditions. Maximum is "
-                        + str(MAXIMUM_QUERY_STATEMENTS)
-                        + ".",
-                        "query_time": str(round(time.time() - start_time, 4)),
-                    }
+            term_queries = list(set(term_queries))
+            fields = [field for sublist in fields for field in sublist]
 
-                metadata, result_ids = self._recursively_parse_query(query["query"])
+            gsis = {field: self.gsis[field]["gsi"] for field in fields if self.gsis.get(field)}
 
-                results = [self.global_index.get(doc_id) for doc_id in result_ids if doc_id in self.global_index]
+            for doc in results:
+                doc["_score"] = 0
 
-                results = orjson.loads(orjson.dumps(results))
+                for term in term_queries:
+                    tf = self.tf.get(doc["uuid"], {}).get(term, 0)
+                    idf = self.idf.get(term, 0)
 
-                for r in results:
-                    r["_score"] = 0
-                    if r["uuid"] in metadata.get("scores", {}):
-                        r["_score"] = metadata["scores"][r["uuid"]]
-                    if r["uuid"] in metadata.get("highlights", {}):
-                        r["_context"] = metadata["highlights"][r["uuid"]]
+                    term_score = (tf * (self.k1 + 1)) / (tf + self.k1 * (1 - self.b + self.b * (self.document_length_words[doc["uuid"]] / self.avgdl)))
+                    term_score *= idf
 
-            end_time = time.time()
+                    doc["_score"] += term_score
 
-            if query.get("sort_by") is None:
-                query["sort_by"] = "_score"
+                for field in fields:
+                    word_pos = gsis[field][term]["documents"]["uuid"][doc["uuid"]]
+                    # give a boost if all terms are within 1 word of each other
+                    # so a doc with "all too well" would do btter than "all well too"
+                    if all([w in word_pos for w in term_queries]):
+                        first_word_pos = set(word_pos[term_queries[0]])
+                        for i, term in enumerate(term_queries):
+                            positions = set([x - i for x in word_pos[term]])
+                            first_word_pos &= positions
 
-            results_sort_by = query["sort_by"]
+                        if first_word_pos:
+                            doc["_score"] += (len(first_word_pos) + 1) * len(first_word_pos)
 
-            if query.get("sort_order") == "asc":
-                results = sorted(
-                    results, key=itemgetter(results_sort_by), reverse=False
-                )
-            else:
-                results = sorted(
-                    results, key=itemgetter(results_sort_by), reverse=True
-                )
-
-            if self.enable_experimental_bm25_ranker:
-                # TODO: Make sure this code can process boosts.
-
-                self.avgdl = sum(self.document_length_words.values()) / len(self.document_length_words)
-
-                if query["query"].get("or"):
-                    operator = "or"
-                    term_queries = [term.get("or")[0][list(term.get("or")[0].keys())[0]]["contains"] for term in query["query"]["or"]]
-                    fields = [list(term.get("or")[0].keys()) for term in query["query"]["or"]]
-                else:
-                    operator = "and"
-                    term_queries = [term[list(term.keys())[0]]["contains"] for term in query["query"]["and"][0]["or"]]
-                    fields = [list(term[list(term.keys())[0]].keys()) for term in query["query"]["and"][0]["or"]]
-
-                term_queries = list(set(term_queries))
-                fields = [field for sublist in fields for field in sublist]
-
-                gsis = {field: self.gsis[field]["gsi"] for field in fields if self.gsis.get(field)}
-
-                for doc in results:
-                    doc["_score"] = 0
-
-                    for term in term_queries:
-                        tf = self.tf.get(doc["uuid"], {}).get(term, 0)
-                        idf = self.idf.get(term, 0)
-
-                        term_score = (tf * (self.k1 + 1)) / (tf + self.k1 * (1 - self.b + self.b * (self.document_length_words[doc["uuid"]] / self.avgdl)))
-                        term_score *= idf
-
-                        doc["_score"] += term_score
-
-                    for field in fields:
-                        word_pos = gsis[field][term]["documents"]["uuid"][doc["uuid"]]
-                        # give a boost if all terms are within 1 word of each other
-                        # so a doc with "all too well" would do btter than "all well too"
-                        if all([w in word_pos for w in term_queries]):
+                        if field != "title_lower":
+                            # TODO: Run only if query len > 1 word
                             first_word_pos = set(word_pos[term_queries[0]])
                             for i, term in enumerate(term_queries):
                                 positions = set([x - i for x in word_pos[term]])
                                 first_word_pos &= positions
 
                             if first_word_pos:
-                                doc["_score"] += (len(first_word_pos) + 1) * len(first_word_pos)
+                                doc["_score"] *= 2 + len(first_word_pos)
 
-                            if field != "title_lower":
-                                # TODO: Run only if query len > 1 word
-                                first_word_pos = set(word_pos[term_queries[0]])
-                                for i, term in enumerate(term_queries):
-                                    positions = set([x - i for x in word_pos[term]])
-                                    first_word_pos &= positions
+                # if "title_lower" in fields:
+                #     # TODO: Make this more dynamic
+                #     doc["_score"] *= len([term.get("or")[0].get("title_lower", {}).get("contains") in doc["title"].lower() for term in query["query"]["or"] if str(term.get("or")[0].get("title_lower", {}).get("contains")).lower() in doc["title"].lower()]) + 1
 
-                                if first_word_pos:
-                                    doc["_score"] *= 2 + len(first_word_pos)
+        # sort by doc score
+        results = sorted(
+            results, key=lambda x: x.get("_score", 0), reverse=True
+        )
 
-                    # if "title_lower" in fields:
-                    #     # TODO: Make this more dynamic
-                    #     doc["_score"] *= len([term.get("or")[0].get("title_lower", {}).get("contains") in doc["title"].lower() for term in query["query"]["or"] if str(term.get("or")[0].get("title_lower", {}).get("contains")).lower() in doc["title"].lower()]) + 1
+        if query.get("query_score"):
+            tree = parse_script_score(query["query_score"])
 
-            # sort by doc score
-            results = sorted(
-                results, key=lambda x: x.get("_score", 0), reverse=True
-            )
+            for document in results:
+                if document.get("_score") is None:
+                    document["_score"] = 0
 
-            if query.get("query_score"):
-                tree = parse_script_score(query["query_score"])
+                transformer = JameSQLScriptTransformer(document)
 
-                for document in results:
-                    if document.get("_score") is None:
-                        document["_score"] = 0
+                document["_score"] = transformer.transform(tree)
 
-                    transformer = JameSQLScriptTransformer(document)
+            results = sorted(results, key=lambda x: x.get("_score", 0), reverse=True)
 
-                    document["_score"] = transformer.transform(tree)
+        if query.get("skip"):
+            results = results[int(query["skip"]) :]
 
-                results = sorted(results, key=lambda x: x.get("_score", 0), reverse=True)
+        total_results = len(results)
 
-            if query.get("skip"):
-                results = results[int(query["skip"]) :]
+        if results_limit:
+            results = results[:results_limit]
 
-            total_results = len(results)
+        if results_limit == 0:
+            results = []
 
-            if results_limit:
-                results = results[:results_limit]
+        result = {
+            "documents": results,
+            "query_time": str(round(end_time - start_time, 4)),
+            "total_results": total_results,
+        }
 
-            if results_limit == 0:
-                results = []
-
-            result = {
-                "documents": results,
-                "query_time": str(round(end_time - start_time, 4)),
-                "total_results": total_results,
+        if query.get("metrics") and "aggregate" in query["metrics"]:
+            result["metrics"] = {
+                "unique_record_values": self._get_unique_record_count(results),
             }
 
-            if query.get("metrics") and "aggregate" in query["metrics"]:
-                result["metrics"] = {
-                    "unique_record_values": self._get_unique_record_count(results),
-                }
+        if query.get("group_by"):
+            result["groups"] = defaultdict(list)
 
-            if query.get("group_by"):
-                result["groups"] = defaultdict(list)
+            for doc in results:
+                if isinstance(doc.get(query["group_by"]), list):
+                    for item in doc.get(query["group_by"]):
+                        result["groups"][item].append(doc)
+                else:
+                    result["groups"][doc.get(query["group_by"])].append(doc)
 
-                for doc in results:
-                    if isinstance(doc.get(query["group_by"]), list):
-                        for item in doc.get(query["group_by"]):
-                            result["groups"][item].append(doc)
-                    else:
-                        result["groups"][doc.get(query["group_by"])].append(doc)
-
-            return result
+        return result
 
     def _get_query_conditions(self, query_tree):
         first_key = list(query_tree.keys())[0]
