@@ -945,12 +945,12 @@ class JameSQL:
                                 positions = set([x - i for x in word_pos[term]])
                                 first_word_pos &= positions
 
-                            if first_word_pos and field != "title_lower":
-                                doc["_score"] += (
-                                    len(first_word_pos) + 1
-                                )  # * len(set(word_pos[term_queries[0]]))
-                            elif first_word_pos and field == "title_lower":
-                                doc["_score"] *= 2 + len(first_word_pos)
+                            # if first_word_pos and field != "title_lower":
+                            #     doc["_score"] += (
+                            #         len(first_word_pos) + 1
+                            #     )  # * len(set(word_pos[term_queries[0]]))
+                            # elif first_word_pos and field == "title_lower":
+                            #     doc["_score"] *= 2 + len(first_word_pos)
 
         # sort by doc score
         results = sorted(results, key=lambda x: x.get("_score", 0), reverse=True)
