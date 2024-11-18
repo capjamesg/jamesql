@@ -342,10 +342,22 @@ class JameSQL:
                     continue
                 results.append(i)
 
+            # get word counts of each
+            wcs = {word: self.word_counts[word] for word in results}
+
+            # order by wc in descending order
+            results = sorted(wcs, key=wcs.get, reverse=True)
+
             return results[0:limit]
         else:
             try:
-                return self.autosuggest_index.keys(prefix=query.lower())[0:limit]
+                candidates = self.autosuggest_index.keys(prefix=query.lower())[0:limit]
+
+                wcs = {word: self.word_counts[word] for word in candidates}
+
+                candidates = sorted(wcs, key=wcs.get, reverse=True)
+
+                return candidates
             except KeyError:
                 return []
 
