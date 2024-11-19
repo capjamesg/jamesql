@@ -606,6 +606,10 @@ class JameSQL:
 
                 os.remove(JOURNAL_FILE)
 
+            self.avgdl = sum(self.document_length_words.values()) / len(
+                self.document_length_words
+            )
+
             return document
 
     def update(self, uuid: str, document: dict) -> Dict[str, dict]:
@@ -837,6 +841,7 @@ class JameSQL:
         results_limit = query.get("limit", 10)
 
         metadata = {}
+        contexts = {}
 
         if not query.get("query"):
             return {
@@ -869,14 +874,9 @@ class JameSQL:
                 if doc_id in self.global_index
             ]
 
-            results = orjson.loads(orjson.dumps(results))
-
             for r in results:
-                r["_score"] = 0
-                if r["uuid"] in metadata.get("scores", {}):
-                    r["_score"] = metadata["scores"][r["uuid"]]
                 if r["uuid"] in metadata.get("highlights", {}):
-                    r["_context"] = metadata["highlights"][r["uuid"]]
+                    contexts[r["uuid"]] = metadata["highlights"][r["uuid"]]
 
         end_time = time.time()
 
@@ -885,21 +885,12 @@ class JameSQL:
 
         results_sort_by = query["sort_by"]
 
-        if query.get("sort_order") == "asc":
-            results = sorted(results, key=itemgetter(results_sort_by), reverse=False)
-        else:
-            results = sorted(results, key=itemgetter(results_sort_by), reverse=True)
+        scores = {}
 
         if self.enable_experimental_bm25_ranker:
             # TODO: Make sure this code can process boosts.
 
-            self.avgdl = sum(self.document_length_words.values()) / len(
-                self.document_length_words
-            )
-
             for doc in results:
-                doc["_score"] = 0
-
                 for term in term_queries:
                     tf = self.tf.get(doc["uuid"], {}).get(term, 0)
                     idf = self.idf.get(term, 0)
@@ -916,13 +907,12 @@ class JameSQL:
                     )
                     term_score *= idf
 
-                    doc["_score"] += term_score
+                    scores[doc["uuid"]] = scores.get(doc["uuid"], 0) + term_score
 
                 for field in fields:
                     gsi_index = self.gsis.get(field)["gsi"]
 
                     word_pos = {word: gsi_index.get(word, {}).get("documents", {}).get("uuid", {}).get(doc["uuid"], []) for word in term_queries}
-
                     for term in term_queries:
                         # give a boost if all terms are within 1 word of each other
                         # so a doc with "all too well" would do better than "all well too"
@@ -936,14 +926,11 @@ class JameSQL:
                             first_word_pos &= positions
 
                         if first_word_pos and field != "title_lower":
-                            doc["_score"] += (
+                            scores[doc["uuid"]] += (
                                 len(first_word_pos) + 1
                             )  # * len(set(word_pos[term_queries[0]]))
                         elif first_word_pos and field == "title_lower":
-                            doc["_score"] *= 2 + len(first_word_pos)
-
-        # sort by doc score
-        results = sorted(results, key=lambda x: x.get("_score", 0), reverse=True)
+                            scores[doc["uuid"]] *= 2 + len(first_word_pos)
 
         if query.get("query_score"):
             tree = parse_script_score(query["query_score"])
@@ -956,18 +943,29 @@ class JameSQL:
 
                 document["_score"] = transformer.transform(tree)
 
-            results = sorted(results, key=lambda x: x.get("_score", 0), reverse=True)
-
         if query.get("skip"):
             results = results[int(query["skip"]) :]
 
         total_results = len(results)
 
-        if results_limit:
-            results = results[:results_limit]
+        # get max 5 scores from "scores" dict
+        scores = dict(sorted(scores.items(), key=lambda item: item[1], reverse=True))
 
-        if results_limit == 0:
-            results = []
+        results = results[:results_limit]
+
+        if results_sort_by and results_sort_by != "_score":
+            results = sorted(
+                results,
+                key=lambda x: x.get(results_sort_by, 0),
+                reverse=query.get("sort_order", True),
+            )
+
+        # zip results with contexts
+        results = [
+            {**result, "context": contexts.get(result["uuid"]), "_score": scores.get(result["uuid"], 0)}
+            for result in results
+            if result
+        ]
 
         result = {
             "documents": results,
