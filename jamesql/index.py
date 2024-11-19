@@ -7,7 +7,6 @@ import threading
 import time
 import uuid
 from collections import defaultdict
-from copy import deepcopy
 from enum import Enum
 from functools import lru_cache
 from operator import itemgetter
@@ -27,11 +26,14 @@ from jamesql.rewriter import string_query_to_jamesql
 
 from .script_lang import JameSQLScriptTransformer, grammar
 
-download("stopwords")
+if not os.path.exists(os.path.expanduser("~") + "/nltk_data"):
+    download("stopwords")
 
 INDEX_STORE = os.path.join(os.path.expanduser("~"), ".jamesql")
 JOURNAL_FILE = os.path.join(os.getcwd(), "journal.jamesql")
 INDEX_DATA_FILE = os.path.join(os.getcwd(), "index.jamesql")
+
+END_OF_SENTENCE_TOKEN = "eos"
 
 if not os.path.exists(INDEX_STORE):
     os.makedirs(INDEX_STORE)
@@ -494,9 +496,9 @@ class JameSQL:
             )
 
             if self.autosuggest_on and document.get(self.autosuggest_on):
-                self.autosuggest_index[
-                    document[self.autosuggest_on].lower()
-                ] = document[self.autosuggest_on]
+                self.autosuggest_index[document[self.autosuggest_on].lower()] = (
+                    document[self.autosuggest_on]
+                )
 
             # add to GSI
             for key, value in document.items():
@@ -755,10 +757,6 @@ class JameSQL:
                 ]
             ):
                 strategy = GSI_INDEX_STRATEGIES.DATE
-            # if word count < 10, use prefix
-            # elif isinstance(index_by, str) and sum([len(item.split(" ")) for item in documents_in_indexed_by]) / len(documents_in_indexed_by) < 10:
-            #     strategy = GSI_INDEX_STRATEGIES.PREFIX
-            # if average contains more than one word, use contains
             elif isinstance(documents_in_indexed_by[0], str) and sum(
                 [len(item.split(" ")) for item in documents_in_indexed_by]
             ) / len(documents_in_indexed_by):
@@ -898,12 +896,6 @@ class JameSQL:
             self.avgdl = sum(self.document_length_words.values()) / len(
                 self.document_length_words
             )
-
-            gsis = {
-                field: self.gsis[field]["gsi"]
-                for field in fields
-                if self.gsis.get(field)
-            }
 
             for doc in results:
                 doc["_score"] = 0
@@ -1135,6 +1127,138 @@ class JameSQL:
 
         return query_terms
 
+    def _run_trigram_code(self, query_term, query_field):
+        matching_highlights = {}
+        trigrams = get_trigrams(query_term)
+
+        contexts = []
+
+        candidates = set(self.gsis[query_field]["gsi"].get(trigrams[0], []))
+
+        for trigram in trigrams:
+            candidates = candidates.intersection(
+                set(self.gsis[query_field]["gsi"].get(trigram, []))
+            )
+
+        # candidate[2] is the document uuid
+        matching_documents = [candidate[2] for candidate in candidates]
+
+        # get line numbers
+        for candidate in candidates:
+            contexts.append(
+                {
+                    "line": candidate[1],
+                    "code": self.gsis[query_field]["id2line"][
+                        f"{candidate[0]}:{candidate[1]}"
+                    ],
+                }
+            )
+            matching_highlights[candidate[2]] = contexts
+
+        return matching_documents, matching_highlights
+
+    def _run_get_strict_matches(self, query_term, gsi):
+        matching_documents = []
+        matching_positions = {}
+        words = query_term.split()
+        uuids = set(gsi.get(words[0], {}).get("documents", {}).get("uuid", []))
+        # only look at documents that contain all words, for efficiency
+        for w in query_term.split(" "):
+            uuids = uuids.intersection(
+                gsi.get(w, {}).get("documents", {}).get("uuid", [])
+            )
+
+        for document in uuids:
+            first_word_pos = set(gsi[words[0]]["documents"]["uuid"][document])
+            for i, word in enumerate(words):
+                word_uuids = gsi[word]["documents"]["uuid"][document]
+                # subtract i from each position to account for the fact that the first word is at position 0
+                word_positions = set([x - i for x in word_uuids])
+
+                first_word_pos &= word_positions
+            # print position of all "." in text
+            if len(first_word_pos) > 0:
+                matching_documents.append(document)
+                matching_positions[document] = first_word_pos
+
+        return matching_documents, matching_positions
+
+    def _run_get_highlights(
+        self, gsi, query_field, matching_documents, matching_positions, highlight_stride
+    ):
+        matching_highlights = {}
+        for document in matching_documents:
+            highlights = []
+            # get pos of .EOS in text
+            eos_token_positions = gsi[END_OF_SENTENCE_TOKEN]["documents"]["uuid"][
+                document
+            ]
+            if len(eos_token_positions) == 0:
+                continue
+            # get first token position before each match and after
+            # highlight_stride
+            for match in matching_positions[document]:
+                before = [pos for pos in eos_token_positions if pos < match]
+                after = [pos for pos in eos_token_positions if pos > match]
+
+                if len(before) == 0 or len(after) == 0:
+                    continue
+
+                original_before = max(before)
+                original_after = min(after)
+
+                doc = self.global_index[document][query_field].split(" ")
+
+                if highlight_stride == 1:
+                    highlights.append(
+                        " ".join(
+                            [
+                                doc[pos]
+                                # + 1 ensures we ignore EOS
+                                for pos in range(original_before + 1, original_after)
+                            ]
+                        )
+                    )
+                    continue
+
+                before = [pos for pos in eos_token_positions if pos < original_before]
+                after = [pos for pos in eos_token_positions if pos > original_after - 1]
+
+                if before and after:
+                    highlights.append(
+                        " ".join(
+                            [
+                                doc[pos]
+                                # + 1 ensures we ignore EOS
+                                for pos in range(max(before) + 1, max(after))
+                            ]
+                        )
+                    )
+                elif before:
+                    highlights.append(
+                        " ".join(
+                            [
+                                doc[pos]
+                                # + 1 ensures we ignore EOS
+                                for pos in range(max(before) + 1, original_after)
+                            ]
+                        )
+                    )
+                elif after:
+                    highlights.append(
+                        " ".join(
+                            [
+                                doc[pos]
+                                # + 1 ensures we ignore EOS
+                                for pos in range(original_before + 1, min(after))
+                            ]
+                        )
+                    )
+
+            matching_highlights[document] = highlights
+
+        return matching_highlights
+
     def _run(self, query: dict, query_field: str) -> List[str]:
         """
         Accept a query and return a list of matching documents.
@@ -1164,8 +1288,7 @@ class JameSQL:
 
         enforce_strict = query["query"][query_field].get("strict", False)
         highlight_terms = query["query"][query_field].get("highlight", False)
-
-        highlight_stride = query["query"][query_field].get("highlight_stride", 10)
+        highlight_stride = query["query"][query_field].get("highlight_stride", 1)
 
         if not self.gsis.get(query_field):
             self.create_gsi(query_field, GSI_INDEX_STRATEGIES.INFER)
@@ -1195,170 +1318,52 @@ class JameSQL:
             query_terms = [query_term.replace("*", c) for c in string.ascii_lowercase]
 
         for query_term in query_terms:
-            if gsi_type not in (
+            if gsi_type == GSI_INDEX_STRATEGIES.TRIGRAM_CODE:
+                matching_documents, matching_highlights = self._run_trigram_code(
+                    query_term, query_field
+                )
+            elif (
+                query_type == "starts_with" and gsi_type == GSI_INDEX_STRATEGIES.PREFIX
+            ):
+                matches = gsi.keys(prefix=query_term)
+                matching_documents.extend([gsi[match] for match in matches])
+            elif (
+                query_type in {"contains", "wildcard"}
+                and gsi_type == GSI_INDEX_STRATEGIES.CONTAINS
+            ):
+                if enforce_strict or highlight_terms:
+                    matching_documents, matching_positions = (
+                        self._run_get_strict_matches(query_term, gsi)
+                    )
+                    if highlight_terms:
+                        matching_highlights = self._run_get_highlights(
+                            gsi,
+                            query_field,
+                            matching_documents,
+                            matching_positions,
+                            highlight_stride,
+                        )
+                else:
+                    for word in str(query_term).split(" "):
+                        word = word.lower()
+
+                        if gsi.get(word) is None:
+                            continue
+
+                        results = self.reverse_tf_idf[word].get(query_field, {})
+
+                        matching_document_scores = results
+                        matching_documents.extend(results.keys())
+
+            elif gsi_type not in (
                 GSI_INDEX_STRATEGIES.FLAT,
                 GSI_INDEX_STRATEGIES.NUMERIC,
                 GSI_INDEX_STRATEGIES.DATE,
             ):
-                if gsi_type == GSI_INDEX_STRATEGIES.TRIGRAM_CODE:
-                    trigrams = get_trigrams(query_term)
-
-                    contexts = []
-
-                    candidates = set(self.gsis[query_field]["gsi"].get(trigrams[0], []))
-
-                    for trigram in trigrams:
-                        candidates = candidates.intersection(
-                            set(self.gsis[query_field]["gsi"].get(trigram, []))
-                        )
-
-                    # candidate[2] is the document uuid
-                    matching_documents.extend(
-                        [candidate[2] for candidate in candidates]
-                    )
-
-                    # get line numbers
-                    for candidate in candidates:
-                        contexts.append(
-                            {
-                                "line": candidate[1],
-                                "code": self.gsis[query_field]["id2line"][
-                                    f"{candidate[0]}:{candidate[1]}"
-                                ],
-                            }
-                        )
-                        matching_highlights[candidate[2]] = contexts
-                if (
-                    query_type == "starts_with"
-                    and gsi_type == GSI_INDEX_STRATEGIES.PREFIX
-                ):
-                    matches = gsi.keys(prefix=query_term)
-                    matching_documents.extend([gsi[match] for match in matches])
-                elif query_type == "starts_with":
+                if query_type == "starts_with":
                     for document in self.global_index.values():
                         if document.get(query_field).startswith(query_term):
                             matching_documents.append(document["uuid"])
-                if (
-                    query_type in {"contains", "wildcard"}
-                    and gsi_type == GSI_INDEX_STRATEGIES.CONTAINS
-                ):
-                    if enforce_strict:
-                        words = query_term.split()
-
-                        all_matches = {}
-                        all_match_positions = {}
-
-                        if len(words) == 1:
-                            all_matches[words[0]] = list(
-                                set(
-                                    gsi.get(words[0], {})
-                                    .get("documents", {})
-                                    .get("uuid", [])
-                                )
-                            )
-                            all_match_positions[words[0]] = (
-                                gsi.get(words[0], {})
-                                .get("documents", {})
-                                .get("uuid", {})
-                            )
-
-                        for word_index in range(0, len(words)):
-                            current_word = words[word_index]
-                            if word_index + 1 == len(words):
-                                next_word = current_word
-                            else:
-                                next_word = words[word_index + 1]
-
-                            # break if on last word
-                            if word_index + 1 == len(words):
-                                break
-
-                            current_word_positions = (
-                                gsi.get(current_word, {})
-                                .get("documents", {})
-                                .get("uuid", {})
-                            )
-                            next_word_positions = (
-                                gsi.get(next_word, {})
-                                .get("documents", {})
-                                .get("uuid", {})
-                            )
-
-                            matches_for_this_word = []
-                            match_positions = defaultdict(list)
-
-                            for doc_id, positions in current_word_positions.items():
-                                if doc_id not in next_word_positions:
-                                    continue
-
-                                for position in set(positions):
-                                    if (
-                                        position + 1 in next_word_positions[doc_id]
-                                    ) or len(words) == 1:
-                                        matches_for_this_word.append(doc_id)
-                                        match_positions[doc_id].append(position)
-                                        break
-
-                            if word_index + 1 == len(words) and len(words) == 1:
-                                all_matches[current_word] = matches_for_this_word
-                                all_match_positions[current_word] = match_positions
-                            else:
-                                all_matches[
-                                    current_word + " " + next_word
-                                ] = matches_for_this_word
-                                all_match_positions[
-                                    current_word + " " + next_word
-                                ] = match_positions
-
-                        if all_matches:
-                            matching_documents.extend(
-                                set.intersection(
-                                    *[set(matches) for matches in all_matches.values()]
-                                )
-                            )
-                            # score for each matching document is the # of matches
-                            matching_document_scores.update(
-                                {
-                                    doc_id: len(all_matches)
-                                    for doc_id in matching_documents
-                                }
-                            )
-                            if highlight_terms:
-                                matches_with_context = defaultdict(list)
-
-                                for doc_occurrences in all_match_positions.values():
-                                    for doc_id, positions in doc_occurrences.items():
-                                        for position in positions:
-                                            start = max(0, position - highlight_stride)
-                                            end = min(
-                                                position + highlight_stride,
-                                                len(
-                                                    self.global_index[doc_id][
-                                                        highlight_terms
-                                                    ].split()
-                                                ),
-                                            )
-                                            matches_with_context[doc_id].append(
-                                                " ".join(
-                                                    self.global_index[doc_id][
-                                                        highlight_terms
-                                                    ].split()[start:end]
-                                                )
-                                            )
-
-                                matching_highlights.update(matches_with_context)
-                    else:
-                        for word in str(query_term).split(" "):
-                            word = word.lower()
-
-                            if gsi.get(word) is None:
-                                continue
-
-                            results = self.reverse_tf_idf[word].get(query_field, {})
-
-                            matching_document_scores = results
-                            matching_documents.extend(results.keys())
-
                 elif query_type == "equals":
                     matching_documents.extend(
                         gsi.get(query_term, {}).get("documents", {}).get("uuid", [])
@@ -1400,7 +1405,7 @@ class JameSQL:
                     if query_term is None or key is None:
                         continue
 
-                    matches = pybmoore.search(query_term, key)
+                    matches = pybmoore.search(str(query_term), key)
 
                     if query_type in {"contains", "wildcard"} and len(matches) > 0:
                         matching_documents.extend(value)
