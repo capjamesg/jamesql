@@ -919,30 +919,28 @@ class JameSQL:
                     doc["_score"] += term_score
 
                 for field in fields:
-                    word_pos = defaultdict(list)
+                    gsi_index = self.gsis.get(field)["gsi"]
 
-                    for i, term in enumerate(doc[field].lower().split(" ")):
-                        word_pos[term].append(i)
+                    word_pos = {word: gsi_index.get(word, {}).get("documents", {}).get("uuid", {}).get(doc["uuid"], []) for word in term_queries}
 
                     for term in term_queries:
                         # give a boost if all terms are within 1 word of each other
                         # so a doc with "all too well" would do better than "all well too"
 
-                        if (
-                            all([w in word_pos for w in term_queries])
-                            and len(term_queries) > 1
-                        ):
-                            first_word_pos = set(word_pos[term_queries[0]])
-                            for i, term in enumerate(term_queries):
-                                positions = set([x - i for x in word_pos[term]])
-                                first_word_pos &= positions
+                        if len(term_queries) < 2:
+                            continue
 
-                            if first_word_pos and field != "title_lower":
-                                doc["_score"] += (
-                                    len(first_word_pos) + 1
-                                )  # * len(set(word_pos[term_queries[0]]))
-                            elif first_word_pos and field == "title_lower":
-                                doc["_score"] *= 2 + len(first_word_pos)
+                        first_word_pos = set(word_pos[term_queries[0]])
+                        for i, term in enumerate(term_queries):
+                            positions = set([x - i for x in word_pos[term]])
+                            first_word_pos &= positions
+
+                        if first_word_pos and field != "title_lower":
+                            doc["_score"] += (
+                                len(first_word_pos) + 1
+                            )  # * len(set(word_pos[term_queries[0]]))
+                        elif first_word_pos and field == "title_lower":
+                            doc["_score"] *= 2 + len(first_word_pos)
 
         # sort by doc score
         results = sorted(results, key=lambda x: x.get("_score", 0), reverse=True)
