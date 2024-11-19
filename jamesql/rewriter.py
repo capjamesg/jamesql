@@ -178,14 +178,12 @@ class QueryRewriter(Transformer):
     def strict_search_query(self, items):
         return {
             "or": [
-                {
-                    field: {
-                        self.get_query_strategy(value=items[0]): items[0],
-                        "strict": True,
-                    }
-                    for field in self.query_keys
-                    if self.indexing_strategies.get(field) not in {"NUMERIC", "DATE"}
-                }
+                {field: {
+                    self.get_query_strategy(value=items[0]): items[0],
+                    "strict": True,
+                }}
+                for field in self.query_keys
+                if self.indexing_strategies.get(field) not in {"NUMERIC", "DATE"}
             ]
         }
 
