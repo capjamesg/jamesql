@@ -492,9 +492,9 @@ class JameSQL:
             )
 
             if self.autosuggest_on and document.get(self.autosuggest_on):
-                self.autosuggest_index[document[self.autosuggest_on].lower()] = document[
-                    self.autosuggest_on
-                ]
+                self.autosuggest_index[
+                    document[self.autosuggest_on].lower()
+                ] = document[self.autosuggest_on]
 
             # add to GSI
             for key, value in document.items():
@@ -885,6 +885,12 @@ class JameSQL:
             self.avgdl = sum(self.document_length_words.values()) / len(self.document_length_words)
 
             gsis = {field: self.gsis[field]["gsi"] for field in fields if self.gsis.get(field)}
+
+            gsis = {
+                field: self.gsis[field]["gsi"]
+                for field in fields
+                if self.gsis.get(field)
+            }
 
             for doc in results:
                 doc["_score"] = 0
@@ -1319,7 +1325,6 @@ class JameSQL:
                     else:
                         for word in str(query_term).split(" "):
                             word = word.lower()
-                            
                             if gsi.get(word) is None:
                                 continue
 
