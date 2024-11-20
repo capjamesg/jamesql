@@ -917,7 +917,6 @@ class JameSQL:
                     term_score *= idf
 
                     doc["_score"] += term_score
-
                 for field in fields:
                     word_pos = defaultdict(list)
 
@@ -933,6 +932,7 @@ class JameSQL:
                             and len(term_queries) > 1
                         ):
                             first_word_pos = set(word_pos[term_queries[0]])
+
                             for i, term in enumerate(term_queries):
                                 positions = set([x - i for x in word_pos[term]])
                                 first_word_pos &= positions
@@ -940,7 +940,8 @@ class JameSQL:
                             if first_word_pos and field != "title_lower":
                                 doc["_score"] += (
                                     len(first_word_pos) + 1
-                                )  # * len(set(word_pos[term_queries[0]]))
+                                ) 
+                                # * len(set(word_pos[term_queries[0]]))
                             elif first_word_pos and field == "title_lower":
                                 doc["_score"] *= 2 + len(first_word_pos)
 
@@ -1161,18 +1162,15 @@ class JameSQL:
         matching_documents = []
         matching_positions = {}
         words = query_term.split()
-        print(gsi["warm"])
         uuids = set(gsi.get(words[0], {}).get("documents", {}).get("uuid", []))
         # only look at documents that contain all words, for efficiency
-        print(uuids)
         for w in query_term.split(" "):
             uuids = uuids.intersection(
                 gsi.get(w, {}).get("documents", {}).get("uuid", [])
             )
-        print(uuids)
         for document in uuids:
             first_word_pos = set(gsi[words[0]]["documents"]["uuid"][document])
-            print(first_word_pos)
+
             for i, word in enumerate(words):
                 word_uuids = gsi[word]["documents"]["uuid"][document]
                 # subtract i from each position to account for the fact that the first word is at position 0
@@ -1278,8 +1276,6 @@ class JameSQL:
         matching_documents = []
         matching_document_scores = {}
         matching_highlights = {}
-
-        print(query)
 
         query_type = list(
             [
