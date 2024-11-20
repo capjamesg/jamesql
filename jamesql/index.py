@@ -917,33 +917,49 @@ class JameSQL:
                     term_score *= idf
 
                     doc["_score"] += term_score
+
                 for field in fields:
-                    word_pos = defaultdict(list)
+                    # word_pos = defaultdict(list)
 
-                    for i, term in enumerate(doc[field].lower().split(" ")):
-                        word_pos[term].append(i)
+                    # for i, term in enumerate(doc[field].lower().split(" ")):
+                    #     word_pos[term].append(i)
 
-                    for term in term_queries:
-                        # give a boost if all terms are within 1 word of each other
-                        # so a doc with "all too well" would do better than "all well too"
+                    # give a boost if all terms are within 1 word of each other
+                    # so a doc with "all too well" would do better than "all well too"
+                    if (
+                        # all([w in word_pos for w in term_queries])
+                        len(term_queries) > 1
+                    ):
+                        starting_word_pos = self.gsis[field]["gsi"][term_queries[0]]["documents"]["uuid"][doc["uuid"]]
+                        # print(term_queries[0], word_pos)
+                        first_word_pos = set(starting_word_pos)
+                        original_first_word_pos = first_word_pos.copy()
+                        # add -1
 
-                        if (
-                            all([w in word_pos for w in term_queries])
-                            and len(term_queries) > 1
-                        ):
-                            first_word_pos = set(word_pos[term_queries[0]])
-
-                            for i, term in enumerate(term_queries):
-                                positions = set([x - i for x in word_pos[term]])
+                        for i, term in enumerate(term_queries):
+                            word_pos = self.gsis[field]["gsi"][term]["documents"]["uuid"][doc["uuid"]]
+                    
+                            positions = set([x - i for x in word_pos])
+                            # first_word_pos &= positions
+                            if len(first_word_pos.intersection(positions)) > 0: # and i != len(term_queries) - 1:
                                 first_word_pos &= positions
 
-                            if first_word_pos and field != "title_lower":
-                                doc["_score"] += (
-                                    len(first_word_pos) + 1
-                                ) 
-                                # * len(set(word_pos[term_queries[0]]))
-                            elif first_word_pos and field == "title_lower":
-                                doc["_score"] *= 2 + len(first_word_pos)
+                        # if 
+                        union_of_original_and_first_word_pos = original_first_word_pos.intersection(first_word_pos)
+                        if first_word_pos and field != "title_lower" and len(first_word_pos) != len(original_first_word_pos):
+                            # print(first_word_pos, doc["title"], field, "union")
+                            doc["_score"] += (
+                                len(first_word_pos) + 1
+                            ) 
+                            # * len(set(word_pos[term_queries[0]]))
+                        elif first_word_pos and field == "title_lower":
+                            # get word overlap between title and terms
+                            overlap = set(term_queries).intersection(set(doc["title_lower"].split(" ")))
+                            # calculate overlap ratio
+                            overlap_ratio = len(overlap) / len(set(doc["title_lower"].split(" ")))
+                            # print((2 * (len(overlap) / overlap_ratio)))
+                            # print(overlap_ratio, doc["title"], field, "overlap")
+                            doc["_score"] *= (4 / (1 - overlap_ratio + 1))
 
         # sort by doc score
         results = sorted(results, key=lambda x: x.get("_score", 0), reverse=True)
