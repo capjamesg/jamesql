@@ -16,6 +16,7 @@ import orjson
 import pybmoore
 import pygtrie
 from BTrees.OOBTree import OOBTree
+import datetime
 from lark import Lark
 from nltk import download
 from nltk.corpus import stopwords
@@ -905,7 +906,7 @@ class JameSQL:
                     )
                     term_score *= idf
 
-                    doc_scores[doc["uuid"]] = term_score
+                    doc_scores[doc["uuid"]] += term_score
 
                 for field in fields:
                     # word_pos = defaultdict(list)
@@ -917,45 +918,56 @@ class JameSQL:
                     # so a doc with "all too well" would do better than "all well too"
                     if (
                         # all([w in word_pos for w in term_queries])
-                        len(term_queries) > 1
+                        len(term_queries) > 0
                     ):
                         starting_word_pos = self.gsis[field]["gsi"][term_queries[0]]["documents"]["uuid"][doc["uuid"]]
                         # print(term_queries[0], word_pos)
                         first_word_pos = set(starting_word_pos)
-                        original_first_word_pos = first_word_pos.copy()
+                        found = False
                         # add -1
 
                         for i, term in enumerate(term_queries):
                             word_pos = self.gsis[field]["gsi"][term]["documents"]["uuid"][doc["uuid"]]
                     
-                            positions = set([x - i for x in word_pos])
+                            positions = set([x - i for x in word_pos]) # | set([x + i for x in word_pos])
                             # first_word_pos &= positions
                             if len(first_word_pos.intersection(positions)) > 0: # and i != len(term_queries) - 1:
+                                found = True
                                 first_word_pos &= positions
 
-                        # if 
-                        union_of_original_and_first_word_pos = original_first_word_pos.intersection(first_word_pos)
-                        if first_word_pos and field != "title_lower" and len(first_word_pos) != len(original_first_word_pos):
+                        if found and field != "title_lower":
                             # print(first_word_pos, doc["title"], field, "union")
-                            doc_scores[doc["uuid"]] += (
-                                len(first_word_pos) + 1
-                            ) 
+                            occurences = len(first_word_pos)
+                            doc_scores[doc["uuid"]] *= 1 + (occurences / len(term_queries))
                             # * len(set(word_pos[term_queries[0]]))
-                        elif first_word_pos and field == "title_lower":
+                        elif found and field == "title_lower":
                             # get word overlap between title and terms
                             overlap = set(term_queries).intersection(set(doc["title_lower"].split(" ")))
                             # calculate overlap ratio
                             overlap_ratio = len(overlap) / len(set(doc["title_lower"].split(" ")))
                             # print((2 * (len(overlap) / overlap_ratio)))
                             # print(overlap_ratio, doc["title"], field, "overlap")
-                            doc_scores[doc["uuid"]] *= (4 / (1 - overlap_ratio + 1))
+                            # if "shake up" in doc["title_lower"]:
+                            # if "shake up" in doc["title_lower"] or "random aeropress" in doc["title_lower"]:
+                            #     print(overlap_ratio, doc["title"])
+                            doc_scores[doc["uuid"]] *= (50 / (1 - overlap_ratio + 1))
+
+                        # # add weight for the first time the term is mentioned
+                        # the closer the mention is to the beginning of the document, the higher the weight
+                        if first_word_pos and field == "title_lower" and found:
+                            # print(first_word_pos, doc["title"], field)
+                            min_pos = min(first_word_pos)
+                            # print(min_pos)
+                            doc_scores[doc["uuid"]] *= 1 + (1 / (min_pos + 1))
 
         # add _score key to all results; create new object
-        results = [dict(doc, _score=doc_scores.get(doc["uuid"], 0), **highlights.get(doc["uuid"], {})) for doc in results]
+        for doc in results:
+            doc["_score"] = doc_scores.get(doc["uuid"], 0)
         if query.get("sort_order") == "asc":
             results = sorted(results, key=itemgetter(results_sort_by), reverse=False)
         else:
             results = sorted(results, key=itemgetter(results_sort_by), reverse=True)
+        # print top 5 scores
 
         if query.get("query_score"):
             tree = parse_script_score(query["query_score"])
