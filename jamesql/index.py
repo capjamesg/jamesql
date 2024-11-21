@@ -923,24 +923,19 @@ class JameSQL:
                         starting_word_pos = self.gsis[field]["gsi"][term_queries[0]]["documents"]["uuid"][doc["uuid"]]
                         # print(term_queries[0], word_pos)
                         first_word_pos = set(starting_word_pos)
-                        found = False
-                        # add -1
 
                         for i, term in enumerate(term_queries):
                             word_pos = self.gsis[field]["gsi"][term]["documents"]["uuid"][doc["uuid"]]
                     
                             positions = set([x - i for x in word_pos]) # | set([x + i for x in word_pos])
-                            # first_word_pos &= positions
-                            if len(first_word_pos.intersection(positions)) > 0: # and i != len(term_queries) - 1:
-                                found = True
-                                first_word_pos &= positions
+                            first_word_pos &= positions
+                            # if len(first_word_pos.intersection(positions)) > 0: # and i != len(term_queries) - 1:
+                            #     first_word_pos &= positions
 
-                        if found and field != "title_lower":
-                            # print(first_word_pos, doc["title"], field, "union")
-                            occurences = len(first_word_pos)
+                        if first_word_pos and field != "title_lower":
                             doc_scores[doc["uuid"]] += len(first_word_pos)
                             # * len(set(word_pos[term_queries[0]]))
-                        elif found and field == "title_lower":
+                        if field == "title_lower":
                             # get word overlap between title and terms
                             overlap = set(term_queries).intersection(set(doc["title_lower"].split(" ")))
                             # calculate overlap ratio
@@ -954,7 +949,7 @@ class JameSQL:
 
                         # # add weight for the first time the term is mentioned
                         # the closer the mention is to the beginning of the document, the higher the weight
-                        if first_word_pos and field == "title_lower" and found:
+                        if first_word_pos and field == "title_lower":
                             # print(first_word_pos, doc["title"], field)
                             min_pos = min(first_word_pos)
                             # print(min_pos)
