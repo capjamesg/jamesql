@@ -938,7 +938,7 @@ class JameSQL:
                         if found and field != "title_lower":
                             # print(first_word_pos, doc["title"], field, "union")
                             occurences = len(first_word_pos)
-                            doc_scores[doc["uuid"]] *= 1 + (occurences / len(term_queries))
+                            doc_scores[doc["uuid"]] += len(first_word_pos)
                             # * len(set(word_pos[term_queries[0]]))
                         elif found and field == "title_lower":
                             # get word overlap between title and terms
