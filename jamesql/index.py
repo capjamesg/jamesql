@@ -837,6 +837,7 @@ class JameSQL:
         results_limit = query.get("limit", 10)
 
         metadata = {}
+        highlights = defaultdict(list)
 
         if not query.get("query"):
             return {
@@ -868,15 +869,8 @@ class JameSQL:
                 for doc_id in result_ids
                 if doc_id in self.global_index
             ]
-
-            results = orjson.loads(orjson.dumps(results))
-
-            for r in results:
-                r["_score"] = 0
-                if r["uuid"] in metadata.get("scores", {}):
-                    r["_score"] = metadata["scores"][r["uuid"]]
-                if r["uuid"] in metadata.get("highlights", {}):
-                    r["_context"] = metadata["highlights"][r["uuid"]]
+        
+            highlights = metadata.get("highlights", {})
 
         end_time = time.time()
 
@@ -885,10 +879,7 @@ class JameSQL:
 
         results_sort_by = query["sort_by"]
 
-        if query.get("sort_order") == "asc":
-            results = sorted(results, key=itemgetter(results_sort_by), reverse=False)
-        else:
-            results = sorted(results, key=itemgetter(results_sort_by), reverse=True)
+        doc_scores = defaultdict(int)
 
         if self.enable_experimental_bm25_ranker:
             # TODO: Make sure this code can process boosts.
@@ -898,8 +889,6 @@ class JameSQL:
             )
 
             for doc in results:
-                doc["_score"] = 0
-
                 for term in term_queries:
                     tf = self.tf.get(doc["uuid"], {}).get(term, 0)
                     idf = self.idf.get(term, 0)
@@ -916,7 +905,7 @@ class JameSQL:
                     )
                     term_score *= idf
 
-                    doc["_score"] += term_score
+                    doc_scores[doc["uuid"]] = term_score
 
                 for field in fields:
                     # word_pos = defaultdict(list)
@@ -948,7 +937,7 @@ class JameSQL:
                         union_of_original_and_first_word_pos = original_first_word_pos.intersection(first_word_pos)
                         if first_word_pos and field != "title_lower" and len(first_word_pos) != len(original_first_word_pos):
                             # print(first_word_pos, doc["title"], field, "union")
-                            doc["_score"] += (
+                            doc_scores[doc["uuid"]] += (
                                 len(first_word_pos) + 1
                             ) 
                             # * len(set(word_pos[term_queries[0]]))
@@ -959,10 +948,14 @@ class JameSQL:
                             overlap_ratio = len(overlap) / len(set(doc["title_lower"].split(" ")))
                             # print((2 * (len(overlap) / overlap_ratio)))
                             # print(overlap_ratio, doc["title"], field, "overlap")
-                            doc["_score"] *= (4 / (1 - overlap_ratio + 1))
+                            doc_scores[doc["uuid"]] *= (4 / (1 - overlap_ratio + 1))
 
-        # sort by doc score
-        results = sorted(results, key=lambda x: x.get("_score", 0), reverse=True)
+        # add _score key to all results; create new object
+        results = [dict(doc, _score=doc_scores.get(doc["uuid"], 0), **highlights.get(doc["uuid"], {})) for doc in results]
+        if query.get("sort_order") == "asc":
+            results = sorted(results, key=itemgetter(results_sort_by), reverse=False)
+        else:
+            results = sorted(results, key=itemgetter(results_sort_by), reverse=True)
 
         if query.get("query_score"):
             tree = parse_script_score(query["query_score"])
