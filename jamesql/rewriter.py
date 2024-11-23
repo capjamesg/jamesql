@@ -293,7 +293,6 @@ def simplify_string_query(parser, query, correct_spelling_index=None):
     result.transform(tree.copy())
 
     # query = simplifier(result.terms)
-    print(query)
     # query = " ".join(query).strip()
 
     if len(query.strip()) == 0:
