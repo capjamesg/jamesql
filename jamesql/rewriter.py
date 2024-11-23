@@ -28,7 +28,7 @@ MULTI_WORD: /[a-zA-Z0-9 ]+/
 TERM: /[a-zA-Z0-9_]+/
 ORDER: "ASC" | "DESC" | "asc" | "desc"
 
-%import common.W
+%import common.WS
 %ignore WS
 """
 
@@ -65,6 +65,10 @@ class QuerySimplifier(Transformer):
 
     def or_query(self, items):
         self.terms.append([items[0], "OR", items[1]])
+        return items[0]
+    
+    def and_query(self, items):
+        self.terms.append([items[0], "AND", items[1]])
         return items[0]
 
     def start(self, items):
