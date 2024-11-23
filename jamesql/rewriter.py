@@ -9,7 +9,8 @@ grammar = """
 start: (query)+ sort_component?
 
 or_query: (query ("OR ") query)*
-query:  or_query | query_component
+and_query: (query ("AND ") query)*
+query: and_query | or_query | query_component
 query_component: (negate_query | range_query | strict_search_query | word_query | field_query | comparison)+
 
 sort_component: "sort:" TERM (ORDER)?
@@ -27,7 +28,7 @@ MULTI_WORD: /[a-zA-Z0-9 ]+/
 TERM: /[a-zA-Z0-9_]+/
 ORDER: "ASC" | "DESC" | "asc" | "desc"
 
-%import common.WS
+%import common.W
 %ignore WS
 """
 
@@ -131,6 +132,9 @@ class QueryRewriter(Transformer):
 
     def or_query(self, items):
         return {"or": items}
+    
+    def and_query(self, items):
+        return {"and": items}
 
     def negate_query(self, items):
         return {"not": items[0]}
