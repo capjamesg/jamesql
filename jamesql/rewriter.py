@@ -294,7 +294,7 @@ def simplify_string_query(parser, query, correct_spelling_index=None):
 
     # query = simplifier(result.terms)
     print(query)
-    query = " ".join(query).strip()
+    # query = " ".join(query).strip()
 
     if len(query.strip()) == 0:
         return query, {}
