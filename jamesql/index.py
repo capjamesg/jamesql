@@ -78,6 +78,7 @@ def parse_script_score(query: str) -> dict:
 
 QUERY_TYPE_COMPARISON_METHODS = {
     "greater_than": lambda query_term, gsi: [
+        # convert all values to str
         doc_uuid for doc_uuid in gsi.values(min=query_term, excludemin=True)
     ],
     "less_than": lambda query_term, gsi: [
@@ -92,7 +93,7 @@ QUERY_TYPE_COMPARISON_METHODS = {
 }
 
 
-def get_trigrams(line):
+def get_trigrams(line):#
     return [line[i : i + 3] for i in range(len(line) - 2)]
 
 
@@ -1307,6 +1308,8 @@ class JameSQL:
 
         matching_positions = {}
 
+        print(query, query_type, gsi_type)
+
         if fuzzy:
             final_query_terms = []
 
@@ -1399,7 +1402,12 @@ class JameSQL:
                 GSI_INDEX_STRATEGIES.DATE,
                 GSI_INDEX_STRATEGIES.NUMERIC,
             }:
+                # if the query term is a date, we need to use the date comparison methods
+                if gsi_type == GSI_INDEX_STRATEGIES.DATE:
+                    query_term = datetime.datetime.fromisoformat(query_term)
+
                 result = QUERY_TYPE_COMPARISON_METHODS[query_type](query_term, gsi)
+
                 if isinstance(result[0], list):
                     for item in result:
                         matching_documents.extend(item)
@@ -1408,7 +1416,7 @@ class JameSQL:
 
             else:
                 for key, value in gsi.items():
-                    if query_term is None or key is None:
+                    if query_term is None or key is None or GSI_INDEX_STRATEGIES.DATE:
                         continue
 
                     matches = pybmoore.search(str(query_term), key)
