@@ -31,6 +31,7 @@ def simplifier(terms):
             and normalized_terms not in outer_terms
         ):
             new_terms.append(t[0])
+            new_terms.append("AND")
             new_terms.append(t[2])
         elif (
             isinstance(t, list)
