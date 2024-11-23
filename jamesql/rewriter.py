@@ -8,8 +8,8 @@ from .query_simplifier import simplifier
 grammar = """
 start: (query)+ sort_component?
 
-or_query: (query ("OR ") query)*
-and_query: (query ("AND ") query)*
+or_query: (query ("OR " | "or ") query)*
+and_query: (query ("AND " | "and ") query)*
 query: and_query | or_query | query_component
 query_component: (negate_query | range_query | strict_search_query | word_query | field_query | comparison)+
 
