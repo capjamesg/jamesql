@@ -32,12 +32,6 @@ def simplifier(terms):
         ):
             new_terms.append(t[0])
             new_terms.append(t[2])
-
-            if t[0] in outer_terms:
-                to_remove.add(t[0])
-
-            if t[2] in outer_terms:
-                to_remove.add(t[2])
         elif (
             isinstance(t, list)
             and t[0] == "NOT"
