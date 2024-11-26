@@ -2,7 +2,7 @@ import os
 
 BASE_URLS = {
     "local": os.getcwd(),
-    "production": "https://jamesg.blog/jamesql/",
+    "production": "https://jamesg.blog/jamesql",
 }
 
 SITE_ENV = os.environ.get("SITE_ENV", "local")
