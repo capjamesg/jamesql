@@ -53,5 +53,5 @@ Our code returns:
 We have successfully built a database!
 
 <footer>
-Next up: <a href="/index/">Learn how to create indices →</a>
+Next up: <a href="/{{ site.root_url }}/index/">Learn how to create indices →</a>
 </footer>

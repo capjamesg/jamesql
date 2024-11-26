@@ -10,6 +10,25 @@
     <link href="https://jamesg.blog/assets/mascot.svg" rel="icon">
 
     <style>
+        :root {
+            --light-background-color: #f7f7f7;
+            --light-foreground-color: black;
+            --light-border-color: lightgrey;
+            --primary-color: royalblue;
+            --border-radius: var(--medium-space);
+            --dark-background-color: #02003c;
+            --dark-code-color: #06006e;
+            --dark-foreground-color: #afc7ff;
+            --light-focus-color: rgb(255, 225, 116);
+            --dark-focus-color: #1e3cb1;
+            --dark-border-color: #6690ff;
+            --small-space: 0.1rem;
+            --medium-space: 0.5rem;
+            --large-space: 1rem;
+        }
+        html {
+            color-scheme: light dark;
+        }
         .search {
             list-style-type: none;
             padding-left: 0;
@@ -19,7 +38,7 @@
             padding-right: 1em;
             padding-top: 0.5em;
             padding-bottom: 0.5em;
-            background-color: white;
+            background-color: light-dark(white, var(--dark-background-color));;
             box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         .search li:hover {
@@ -67,11 +86,12 @@
         }
         * {
             line-height: 1.5;
-            color: black;
+            color: light-dark(black, var(--dark-foreground-color));
         }
         #main {
             display: grid;
             grid-template-columns: 1fr 4fr;
+            background-color: light-dark(white, var(--dark-background-color));
         }
         article {
             padding-bottom: 3em;
@@ -83,7 +103,7 @@
             margin-top: 1.5em;
         }
         aside {
-            border-right: 0.5px solid rgb(57, 57, 57);
+            border-right: 0.5px solid light-dark(rgb(57, 57, 57), var(--dark-border-color));
             padding-right: 1.5em;
         }
         .right-sidebar {
@@ -115,21 +135,21 @@
         }
         .pages a, pre {
             display: block;
-            background-color: white;
+            background-color: light-dark(white, var(--dark-background-color));;
             box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.1);
-
             padding-left: 1em;
             padding-right: 1em;
         }
         pre {
             padding: 1em;
             text-wrap: stable;
+            border: 0.1em solid light-dark(rgb(57, 57, 57), var(--dark-border-color));
         }
         nav {
-            background-color: white;
+            background-color: light-dark(white, var(--dark-background-color));;
             padding: 0.5em;
             /*! padding-left: 2.5em; */
-            border-bottom: 0.5px solid rgb(57, 57, 57);
+            border-bottom: 0.5px solid light-dark(rgb(57, 57, 57), var(--dark-border-color));
         }
         .logo-head {
             display: flex;align-content: center;align-items: center;margin-left: 0.5em;
@@ -212,7 +232,7 @@
             margin-bottom: 1em;
         }
         .toc {
-            border-left: 0.5px solid rgb(57, 57, 57);
+            border-left: 0.5px solid light-dark(rgb(57, 57, 57), var(--dark-border-color));
             padding-left: 1em;
         }
         h1 {
@@ -228,7 +248,7 @@
             background-color: #f1f1f1;
             padding: 0.5em;
             padding-left: 1em;
-            border-bottom: 0.5px solid rgb(57, 57, 57);
+            border-bottom: 0.5px solid light-dark(rgb(57, 57, 57), var(--dark-border-color));
         }
         th {
             text-align: left;
@@ -237,7 +257,7 @@
             border-collapse: collapse;
             width: 100%;
             border-spacing: 1em;
-            background: white;
+            background: light-dark(white, var(--dark-background-color));;
             box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         td, th {
@@ -247,11 +267,11 @@
             margin-right: 1em;
         }
         tr {
-            border-bottom: 0.5px solid rgb(57, 57, 57);
+            border-bottom: 0.5px solid light-dark(rgb(57, 57, 57), var(--dark-border-color));
         }
         input {
             padding: 0.5em;
-            border: 0.5px solid rgb(57, 57, 57);
+            border: 0.5px solid light-dark(rgb(57, 57, 57), var(--dark-border-color));
             width: 100%;
             box-sizing: border-box;
             background-color: rgba(0, 0, 0, 0.05);
@@ -280,8 +300,8 @@
             color: royalblue;
         }
         .menu {
-            background-color: white;
-            border-bottom: 0.5px solid rgb(57, 57, 57);
+            background-color: light-dark(white, var(--dark-background-color));;
+            border-bottom: 0.5px solid light-dark(rgb(57, 57, 57), var(--dark-border-color));
         }
         .menu {
             display: grid;
@@ -290,7 +310,7 @@
         .jcb:hover {
             background-color: royalblue;
             a {
-                color: white;
+                color: light-dark(white, var(--dark-background-color));;
             }
         }
         .aurora:hover {
@@ -321,8 +341,8 @@
         .nav-title svg {
             display: none;
         }
-        .toc a {
-            color: rgb(81, 81, 81);
+        .toc a, .links a {
+            color: light-dark(rgb(81, 81, 81), var(--dark-foreground-color));
         }
         @media (max-width: 800px) {
             #main {
@@ -378,7 +398,7 @@
             nav {
                 display: block;
                 padding: 0;
-                background-color: white;
+                background-color: light-dark(white, var(--dark-background-color));;
             }
             #title {
                 font-size: 1em;
@@ -390,7 +410,7 @@
                 display: none;
             }
             .nav-title {
-                background-color: white;
+                background-color: light-dark(white, var(--dark-background-color));;
                 box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.1);
                 padding: 0.5em;
                 padding-left: 1em;
@@ -407,7 +427,7 @@
             }
             .logo-head {
                 background-color: rgb(238, 237, 237);
-                color: white;
+                color: light-dark(white, var(--dark-background-color));;
                 display: flex;
                 align-items: center;
                 padding: 0.5em;
@@ -433,14 +453,14 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             margin-top: 2em;
-            background-color: white;
+            background-color: light-dark(white, var(--dark-background-color));;
             box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.1);
             padding-left: 1em;
             padding-right: 1em;
             gap: 1em;
         }
         footer div:first-child {
-            border-right: 0.5px solid rgb(57, 57, 57);
+            border-right: 0.5px solid light-dark(rgb(57, 57, 57), var(--dark-border-color));
         }
         footer div:last-child {
             display: flex;
@@ -454,10 +474,7 @@
         }
         .links {
             margin-top: 3em;
-            border-left: 0.5px solid rgb(57, 57, 57);
-        }
-        .links a {
-            color: rgb(81, 81, 81);
+            border-left: 0.5px solid light-dark(rgb(57, 57, 57), var(--dark-border-color));
         }
         form {
             display: flex;
@@ -499,7 +516,7 @@
     });
 </script>
 <body>
-    <div class="menu"><div></div><ul><a href="https://jamesg.blog/" class="jcb"><li>James' Coffee Blog</li></a><a href="https://aurora.jamesg.blog/" class="aurora"><li>Aurora</li></a><a href="https://jamesg.blog/jamesql/"><li style="background-color: royalblue; color: white;">JameSQL</li></a></ul></div>
+    <div class="menu"><div></div><ul><a href="https://jamesg.blog/" class="jcb"><li>James' Coffee Blog</li></a><a href="https://aurora.jamesg.blog/" class="aurora"><li>Aurora</li></a><a href="https://jamesg.blog/jamesql/"><li style="background-color: royalblue; color: light-dark(white, var(--dark-background-color));;">JameSQL</li></a></ul></div>
     <nav><div class="logo-head"><img src="https://jamesg.blog/assets/mascot.svg" style="height: 2.5em;/*! margin-top: 1em; */margin-right: 1em;/*! float: right; */"><div style="/*! display: flex; *//*! padding-top: 1em; */padding-bottom: 0;/*! border-bottom: 1px solid black; */"><h1 style="/*! display: inline-block; */font-size: 1em;margin: 0;">JameSQL</h1>
     <p class="manual">User Manual</p></div></div><a href="#"><div class="nav-title"><h1 id="title">{{ page.title }}</h1> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><rect width="256" height="256" fill="none"/><circle cx="128" cy="128" r="96" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><line x1="88" y1="128" x2="168" y2="128" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/><polyline points="136 96 168 128 136 160" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/></svg></div></a><span></span></nav>
     <div id="main">
@@ -512,27 +529,27 @@
                     </form>
                 </search>
                 <h3>Get Started</h3>
-                <a href="/" {% if page.permalink == "//" %}class="focused"{% endif %}><li>Home</li></a>
-                <a href="/quickstart/" {% if page.permalink == "/quickstart/" %}class="focused"{% endif %}><li>Quickstart</li></a>
-                <a href="/create/" {% if page.permalink == "/create/" %}class="focused"{% endif %}><li>Create an Index</li></a>
-                <a href="/add/" {% if page.permalink == "/add/" %}class="focused"{% endif %}><li>Add Documents</li></a>
-                <a href="/update/" {% if page.permalink == "/update/" %}class="focused"{% endif %}><li>Update Documents</li></a>
-                <a href="/delete/" {% if page.permalink == "/delete/" %}class="focused"{% endif %}><li>Delete Documents</li></a>
+                <a href="/{{ site.root_url }}/" {% if page.permalink == "//" %}class="focused"{% endif %}><li>Home</li></a>
+                <a href="/{{ site.root_url }}/quickstart/" {% if page.permalink == "/quickstart/" %}class="focused"{% endif %}><li>Quickstart</li></a>
+                <a href="/{{ site.root_url }}/create/" {% if page.permalink == "/create/" %}class="focused"{% endif %}><li>Create an Index</li></a>
+                <a href="/{{ site.root_url }}/add/" {% if page.permalink == "/add/" %}class="focused"{% endif %}><li>Add Documents</li></a>
+                <a href="/{{ site.root_url }}/update/" {% if page.permalink == "/update/" %}class="focused"{% endif %}><li>Update Documents</li></a>
+                <a href="/{{ site.root_url }}/delete/" {% if page.permalink == "/delete/" %}class="focused"{% endif %}><li>Delete Documents</li></a>
                 <h3>Querying</h3>
-                <a href="/search/" {% if page.permalink == "/search/" %}class="focused"{% endif %}><li>Query Structure</li></a>
-                <a href="/string-query/" {% if page.permalink == "/string-query/" %}class="focused"{% endif %}><li>String Queries</li></a>
-                <a href="/ranking/" {% if page.permalink == "/ranking/" %}class="focused"{% endif %}><li>Document Ranking</li></a>
-                <a href="/script-scores/" {% if page.permalink == "/script-scores/" %}class="focused"{% endif %}><li>Script Scores</li></a>
-                <a href="/matching/" {% if page.permalink == "/matching/" %}class="focused"{% endif %}><li>Matching</li></a>
-                <a href="/range/" {% if page.permalink == "/range/" %}class="focused"{% endif %}><li>Range Queries</li></a>
-                <a href="/highlight/" {% if page.permalink == "/highlight/" %}class="focused"{% endif %}><li>Highlight Matches</li></a>
-                <a href="/group-by/" {% if page.permalink == "/group-by/" %}class="focused"{% endif %}><li>Group Matches</li></a>
+                <a href="/{{ site.root_url }}/search/" {% if page.permalink == "/search/" %}class="focused"{% endif %}><li>Query Structure</li></a>
+                <a href="/{{ site.root_url }}/string-query/" {% if page.permalink == "/string-query/" %}class="focused"{% endif %}><li>String Queries</li></a>
+                <a href="/{{ site.root_url }}/ranking/" {% if page.permalink == "/ranking/" %}class="focused"{% endif %}><li>Document Ranking</li></a>
+                <a href="/{{ site.root_url }}/script-scores/" {% if page.permalink == "/script-scores/" %}class="focused"{% endif %}><li>Script Scores</li></a>
+                <a href="/{{ site.root_url }}/matching/" {% if page.permalink == "/matching/" %}class="focused"{% endif %}><li>Matching</li></a>
+                <a href="/{{ site.root_url }}/range/" {% if page.permalink == "/range/" %}class="focused"{% endif %}><li>Range Queries</li></a>
+                <a href="/{{ site.root_url }}/highlight/" {% if page.permalink == "/highlight/" %}class="focused"{% endif %}><li>Highlight Matches</li></a>
+                <a href="/{{ site.root_url }}/group-by/" {% if page.permalink == "/group-by/" %}class="focused"{% endif %}><li>Group Matches</li></a>
                 <h3>Search UX</h3>
-                <a href="/autosuggest/" {% if page.permalink == "/autosuggest/" %}class="focused"{% endif %}><li>Autosuggest</li></a>
-                <a href="/spelling-correction/" {% if page.permalink == "/spelling-correction/" %}class="focused"{% endif %}><li>Spelling Correction</li></a>
+                <a href="/{{ site.root_url }}/autosuggest/" {% if page.permalink == "/autosuggest/" %}class="focused"{% endif %}><li>Autosuggest</li></a>
+                <a href="/{{ site.root_url }}/spelling-correction/" {% if page.permalink == "/spelling-correction/" %}class="focused"{% endif %}><li>Spelling Correction</li></a>
                 <h3>Advanced</h3>
-                <a href="/code-search/" {% if page.permalink == "/code-search/" %}class="focused"{% endif %}><li>Code Search</li></a>
-                <a href="/storage-and-consistency/" {% if page.permalink == "/storage-and-consistency/" %}class="focused"{% endif %}><li>Storage and Consistency</li></a>
+                <a href="/{{ site.root_url }}/code-search/" {% if page.permalink == "/code-search/" %}class="focused"{% endif %}><li>Code Search</li></a>
+                <a href="/{{ site.root_url }}/storage-and-consistency/" {% if page.permalink == "/storage-and-consistency/" %}class="focused"{% endif %}><li>Storage and Consistency</li></a>
             </ul>
         </aside>
         <main>
