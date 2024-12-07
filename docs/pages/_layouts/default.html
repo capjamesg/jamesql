@@ -398,6 +398,7 @@
         @media (max-width: 800px) {
             aside main {
                 overflow-y: initial;
+                padding-left: 1em;
             }
             .right-sidebar {
                 order: -1;
@@ -582,7 +583,7 @@
                 <aside class="right-sidebar">
                     {% if site.page.toc %}
                     <div class="toc">
-                        <h2>Contents</h2>
+                        <h2>On this page</h2>
                         {% for item in site.page.toc %}
                             <h3><a href="#{{ item.id }}">{{ item.text }}</a></h3>
                             {% if item.children %}
