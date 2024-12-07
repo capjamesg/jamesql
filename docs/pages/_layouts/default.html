@@ -345,11 +345,16 @@
             color: light-dark(rgb(81, 81, 81), var(--dark-foreground-color));
         }
         @media (max-width: 800px) {
+            .right-sidebar {
+                order: -1;
+                  display: block;
+                  height: 100%;
+            }
+            main aside {
+                padding-top: 0;
+            }
             #main {
                 grid-template-columns: 1fr;
-            }
-            aside {
-                display: none;
             }
             main {
                 grid-template-columns: 1fr;
@@ -357,6 +362,7 @@
             article {
                 max-width: 100%;
                 padding: 1em;
+                padding-top: 0;
             }
             .nav-title svg {
                 display: block;
@@ -398,7 +404,7 @@
             nav {
                 display: block;
                 padding: 0;
-                background-color: light-dark(white, var(--dark-background-color));;
+                background-color: light-dark(white, var(--dark-background-color));
             }
             #title {
                 font-size: 1em;
@@ -410,7 +416,7 @@
                 display: none;
             }
             .nav-title {
-                background-color: light-dark(white, var(--dark-background-color));;
+                background-color: light-dark(white, var(--dark-background-color));
                 box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.1);
                 padding: 0.5em;
                 padding-left: 1em;
