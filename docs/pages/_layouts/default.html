@@ -344,7 +344,61 @@
         .toc a, .links a {
             color: light-dark(rgb(81, 81, 81), var(--dark-foreground-color));
         }
+                .toc h3 {
+            margin-bottom: 0.25em;
+        }
+        footer {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            margin-top: 2em;
+            background-color: light-dark(white, var(--dark-background-color));;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding-left: 1em;
+            padding-right: 1em;
+            gap: 1em;
+        }
+        footer div:first-child {
+            border-right: 0.5px solid light-dark(rgb(57, 57, 57), var(--dark-border-color));
+        }
+        footer div:last-child {
+            display: flex;
+            justify-content: flex-end;
+        }
+        video {
+            max-width: 35em;
+        }
+        .pages ul {
+            padding-bottom: 3em;
+        }
+        .links {
+            margin-top: 3em;
+            border-left: 0.5px solid light-dark(rgb(57, 57, 57), var(--dark-border-color));
+        }
+        form {
+            display: flex;
+            align-items: center;
+            padding-left: 0;
+            padding-right: 0;
+        }
+        form svg {
+            margin-left: 0.5em;
+            height: 1.5em;
+        }
+        form button {
+            display: flex;
+            align-items: center;
+            background-color: inherit;
+            border: none;
+            outline: none;
+            cursor: pointer;
+        }
+        .search h2 {
+            margin-top: 0.5em;
+        }
         @media (max-width: 800px) {
+            aside main {
+                overflow-y: initial;
+            }
             .right-sidebar {
                 order: -1;
                   display: block;
@@ -456,57 +510,6 @@
             .menu {
                 display: none;
             }
-        }
-        .toc h3 {
-            margin-bottom: 0.25em;
-        }
-        footer {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            margin-top: 2em;
-            background-color: light-dark(white, var(--dark-background-color));;
-            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.1);
-            padding-left: 1em;
-            padding-right: 1em;
-            gap: 1em;
-        }
-        footer div:first-child {
-            border-right: 0.5px solid light-dark(rgb(57, 57, 57), var(--dark-border-color));
-        }
-        footer div:last-child {
-            display: flex;
-            justify-content: flex-end;
-        }
-        video {
-            max-width: 35em;
-        }
-        .pages ul {
-            padding-bottom: 3em;
-        }
-        .links {
-            margin-top: 3em;
-            border-left: 0.5px solid light-dark(rgb(57, 57, 57), var(--dark-border-color));
-        }
-        form {
-            display: flex;
-            align-items: center;
-            padding-left: 0;
-            padding-right: 0;
-        }
-        form svg {
-            margin-left: 0.5em;
-            height: 1.5em;
-        }
-        form button {
-            display: flex;
-            align-items: center;
-            background-color: inherit;
-            border: none;
-            outline: none;
-            cursor: pointer;
-        }
-        .search h2 {
-            margin-top: 0.5em;
         }
     </style>
 </head>
