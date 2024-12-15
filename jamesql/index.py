@@ -200,7 +200,7 @@ class JameSQL:
         index = defaultdict(
             lambda: {
                 "count": 0,
-                "documents": {"uuid": defaultdict(list), "count": defaultdict(int)},
+                "documents": {"uuid": defaultdict(set), "count": defaultdict(int)},
             }
         )
 
@@ -220,7 +220,7 @@ class JameSQL:
 
                 # Update index
                 index[word_lower]["count"] += 1
-                index[word_lower]["documents"]["uuid"][document["uuid"]].append(pos)
+                index[word_lower]["documents"]["uuid"][document["uuid"]].add(pos)
                 index[word_lower]["documents"]["count"][document["uuid"]] += 1
 
                 self.word_counts[word_lower] += 1
