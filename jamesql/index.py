@@ -2,6 +2,7 @@ import hashlib
 import json
 import math
 import os
+import gc
 import string
 import threading
 import time
@@ -829,6 +830,8 @@ class JameSQL:
             self.gsis[index_by]["id2line"] = {}
             self.gsis[index_by]["doc_lengths"] = {}
 
+        gc.collect()
+        
         return gsi
 
     def search(
