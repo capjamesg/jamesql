@@ -248,9 +248,9 @@ class JameSQL:
             for word, tf_value in self.tf[document["uuid"]].items():
                 score = tf_value * self.idf[word]
                 if self.tf_idf[word].get(score):
-                    self.tf_idf[word][score].append(document["uuid"])
+                    self.tf_idf[word][score].add(document["uuid"])
                 else:
-                    self.tf_idf[word][score] = [document["uuid"]]
+                    self.tf_idf[word][score] = set([document["uuid"]])
 
             for w in document[index_by].split(" "):
                 if self.reverse_tf_idf[w].get(index_by) is None:
