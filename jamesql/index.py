@@ -214,7 +214,7 @@ class JameSQL:
 
             unique_words_in_document = set()
 
-            index[document[index_by]]["documents"]["uuid"][document["uuid"]].append(0)
+            index[document[index_by]]["documents"]["uuid"][document["uuid"]].add(0)
 
             for pos, word in enumerate(document[index_by].split()):
                 word_lower = word.lower()
