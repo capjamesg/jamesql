@@ -212,9 +212,9 @@ class JameSQL:
             word_count = defaultdict(int)  # Track word counts in this document
             words = document[index_by].split()  # Tokenize the document
 
-            unique_words_in_document = list()
+            unique_words_in_document = set()
 
-            index[document[index_by]]["documents"]["uuid"][document["uuid"]].append(0)
+            index[document[index_by]]["documents"]["uuid"][document["uuid"]].add(0)
 
             for pos, word in enumerate(document[index_by].split()):
                 word_lower = word.lower()
