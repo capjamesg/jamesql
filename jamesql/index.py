@@ -526,9 +526,9 @@ class JameSQL:
                             }
                         }
                     self.gsis[key]["gsi"][value]["length"] = len(value)
-                    self.gsis[key]["gsi"][value]["documents"]["uuid"][
-                        document["uuid"]
-                    ].add(0)
+                    # self.gsis[key]["gsi"][value]["documents"]["uuid"][
+                    #     document["uuid"]
+                    # ].add(0)
                     self.gsis[key]["gsi"][value]["documents"]["count"][
                         document["uuid"]
                     ] += 1
